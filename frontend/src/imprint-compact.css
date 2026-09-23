@@ -1,0 +1,21 @@
+@media(min-width:1301px){
+  .imprint-head{padding:18px 0 12px}
+  .imprint-head h1{font-size:58px;margin:9px 0}
+  .imprint-kpis{margin-bottom:11px}
+  .imprint-kpis>div{padding:9px 18px}
+  .imprint-kpis strong{font-size:32px}
+  .imprint-panel{padding:12px 18px}
+  .imprint-panel-head{margin-bottom:9px}
+  .imprint-panel-head h2{font-size:24px}
+  .timeline-panel,.hourly-output{margin-bottom:11px}
+  .timeline-axis{margin-bottom:8px}
+  .timeline-legend{margin-top:7px}
+  .output-card{padding:8px}
+  .output-card strong{font-size:25px}
+  .output-progress{margin:6px 0}
+  .imprint-bottom{min-height:194px;margin-bottom:9px}
+  .reason-list{gap:6px}
+  .reason-row{font-size:10px}
+  .scrap-hour-chart{min-height:78px}
+}
+.shift-elapsed.unknown-elapsed,.timeline-legend .unknown{background:#82959d}

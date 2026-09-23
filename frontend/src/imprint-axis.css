@@ -1,0 +1,2 @@
+.timeline-axis{position:relative;height:18px;display:block;margin:0 0 13px 130px}.timeline-axis span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}.timeline-axis span.first{transform:none}.timeline-axis span.last{transform:translateX(-100%)}
+@media(max-width:780px){.timeline-axis{margin-left:0}.timeline-axis span:nth-child(even){display:none}.timeline-axis span.last{display:block}}

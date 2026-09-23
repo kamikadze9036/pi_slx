@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-production_dashboard}
+      POSTGRES_USER: ${POSTGRES_USER:-dashboard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dashboard}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-production_dashboard}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:?Set ADMIN_API_KEY in .env}
+      MES_PROVIDER: ${MES_PROVIDER:-mock}
+      SITE_TIMEZONE: ${SITE_TIMEZONE:-Europe/Prague}
+      POLL_SECONDS: ${POLL_SECONDS:-10}
+      CICLADES_DSN: ${CICLADES_DSN:-}
+      CICLADES_MAPPING_FILE: ${CICLADES_MAPPING_FILE:-}
+      EUROMAP63_API_URL: ${EUROMAP63_API_URL:-}
+      EUROMAP63_FRONTEND_URL: ${EUROMAP63_FRONTEND_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.1.0}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

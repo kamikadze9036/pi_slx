@@ -1,0 +1,153 @@
+/* High-contrast palette for displays in bright production areas. */
+body:has(.theme-light) { background: #f2f5f3; }
+.theme-light {
+  color: #14282b;
+  background: #f2f5f3;
+}
+.screen.theme-light { background: #f2f5f3; }
+.theme-light .topbar,
+.theme-light footer { border-color: #b9c9c7; }
+.theme-light .brand,
+.theme-light .top-time,
+.theme-light .product-line,
+.theme-light .imprint-head p { color: #39535a; }
+.theme-light .brand-mark { color: #075e50; border-color: #087b66; }
+.theme-light .top-time strong,
+.theme-light .headline-meta strong { color: #14282b; }
+.theme-light .top-status,
+.theme-light .eyebrow,
+.theme-light .product-line span,
+.theme-light .imprint-head p span,
+.theme-light .section-aside span,
+.theme-light .footer-sep { color: #086a58; }
+.theme-light .status-dot { background: #087c5c; box-shadow: none; }
+.theme-light .status-dot.stale { background: #b42e35; }
+.theme-light .slash { color: #748e91; }
+.theme-light .headline-meta>div,
+.theme-light .imprint-shift { border-color: #c0cfcb; }
+.theme-light .headline-meta span,
+.theme-light .headline-meta small,
+.theme-light .imprint-shift span,
+.theme-light .imprint-shift small { color: #425e64; }
+.theme-light .headline-meta .negative { color: #ae2630; }
+.theme-light .headline-meta .positive { color: #086a4d; }
+.theme-light .view-nav { color: #4c666b; }
+.theme-light .view-nav a { color: #07695a; }
+.theme-light .view-nav .selected { color: #14282b; border-color: #087b66; }
+.theme-light .chart-panel,
+.theme-light .imprint-panel,
+.theme-light .imprint-kpis { background: #fff; border-color: #b7cac6; box-shadow: 0 5px 18px #274a4810; }
+.theme-light .chart-panel,
+.theme-light .timeline-panel { border-top-color: #087b66; }
+.theme-light .imprint-kpis>div { border-color: #cfdbd8; }
+.theme-light .section-aside,
+.theme-light .bar-heading,
+.theme-light .hour-time span,
+.theme-light .hour-metric span,
+.theme-light .hour-metric em,
+.theme-light .kpi-label,
+.theme-light .kpi-note,
+.theme-light .imprint-kpis span,
+.theme-light .imprint-kpis small,
+.theme-light .imprint-panel-head>span,
+.theme-light .timeline-axis,
+.theme-light .timeline-label,
+.theme-light .timeline-legend,
+.theme-light .output-card>span,
+.theme-light .output-card small,
+.theme-light .output-card-foot,
+.theme-light .scrap-hour-chart span,
+.theme-light footer { color: #3e5b61; }
+.theme-light .bar-heading,
+.theme-light .hour-row,
+.theme-light .scrap-track,
+.theme-light .scrap-hour-chart,
+.theme-light .scrap-reasons>div { border-color: #ccd9d6; }
+.theme-light .bar-heading i { background: #869e9f; }
+.theme-light .hour-row.is-current { background: #e7f4ee; box-shadow: inset 4px 0 #087b66; }
+.theme-light .bar,
+.theme-light .legend .future,
+.theme-light .shift-track,
+.theme-light .timeline-legend .future-key { background: #e3eae8; }
+.theme-light .bar-segment { border-right-color: #fff; }
+.theme-light .bar-segment.good,
+.theme-light .legend .good,
+.theme-light .shift-elapsed,
+.theme-light .timeline-legend .running,
+.theme-light .output-progress i { background: #087b5a; }
+.theme-light .bar-segment.speed,
+.theme-light .legend .speed { background: #e4ac20; }
+.theme-light .bar-segment.micro,
+.theme-light .legend .micro { background: #7952b5; }
+.theme-light .bar-segment.down,
+.theme-light .legend .down { background: #c9343e; }
+.theme-light .bar-segment.scrap,
+.theme-light .legend .scrap { background: #d36d26; }
+.theme-light .bar-segment.unknown,
+.theme-light .legend .unknown,
+.theme-light .shift-elapsed.unknown-elapsed,
+.theme-light .timeline-legend .unknown { background: #74888d; }
+.theme-light .bar-segment.good,
+.theme-light .bar-segment.micro,
+.theme-light .bar-segment.down,
+.theme-light .bar-segment.scrap,
+.theme-light .bar-segment.unknown { color: #fff; }
+.theme-light .now-mark { color: #314e54; }
+.theme-light .legend { color: #365359; }
+.theme-light .legend .future,
+.theme-light .timeline-legend .future-key { border-color: #afc2bd; }
+.theme-light .kpi { border-color: #becfca; }
+.theme-light .kpi.primary { background: #e2f3e9; border-color: #087b5a; }
+.theme-light .kpi.primary strong,
+.theme-light .green-text strong { color: #086b4e; }
+.theme-light .kpi.primary.warning { background: #fcebec; border-color: #b82f39; }
+.theme-light .kpi.primary.warning strong,
+.theme-light .red-text strong,
+.theme-light .hour-metric:last-child strong,
+.theme-light .imprint-kpis .red-text { color: #b52e37; }
+.theme-light .orange-text strong,
+.theme-light .hour-metric:nth-last-child(2) strong,
+.theme-light .imprint-kpis .orange-text,
+.theme-light .scrap-reasons strong { color: #a84d15; }
+.theme-light .yellow-text strong { color: #866009; }
+.theme-light .imprint-kpis .purple-text { color: #7044a5; }
+.theme-light .shift-event { border-color: #fff; }
+.theme-light .shift-event.mechanical,
+.theme-light .timeline-legend .mechanical,
+.theme-light .reason-dot.mechanical,
+.theme-light .reason-bar .mechanical { background: #c9343e; }
+.theme-light .shift-event.material,
+.theme-light .timeline-legend .material,
+.theme-light .reason-dot.material,
+.theme-light .reason-bar .material { background: #e1a91a; }
+.theme-light .shift-event.quality,
+.theme-light .timeline-legend .quality,
+.theme-light .reason-dot.quality,
+.theme-light .reason-bar .quality { background: #d36d26; }
+.theme-light .shift-event.micro_stop,
+.theme-light .timeline-legend .micro_stop,
+.theme-light .reason-dot.micro_stop,
+.theme-light .reason-bar .micro_stop { background: #7952b5; }
+.theme-light .shift-event.planned,
+.theme-light .timeline-legend .planned,
+.theme-light .reason-dot.planned,
+.theme-light .reason-bar .planned { background: #2875a4; }
+.theme-light .shift-event.other,
+.theme-light .timeline-legend .other,
+.theme-light .reason-dot.other,
+.theme-light .reason-bar .other { background: #70878b; }
+.theme-light .scrap-pin,
+.theme-light .timeline-legend .scrap-key,
+.theme-light .scrap-column i { background: #ca5e18; }
+.theme-light .scrap-pin { box-shadow: 0 0 0 3px #ca5e1833; }
+.theme-light .detail-unavailable { color: #88540e; }
+.theme-light .output-card { background: #f8faf9; border-color: #bfcfcb; }
+.theme-light .output-progress,
+.theme-light .reason-bar { background: #dce7e2; }
+.theme-light .output-card-foot b,
+.theme-light .reason-row,
+.theme-light .reason-row strong { color: #14282b; }
+.theme-light .panel-empty,
+.theme-light .scrap-reasons>div { color: #3e5b61; }
+.theme-light.empty-state { background: #f2f5f3; color: #14282b; }
+.theme-light.empty-state p { color: #3e5b61; }
