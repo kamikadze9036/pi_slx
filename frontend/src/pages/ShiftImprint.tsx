@@ -42,9 +42,10 @@ function HourBreakdownRow({ hour, unit }: { hour: Hour; unit: 'minutes' | 'piece
           if (value <= 0) return null;
           const width = value / total * 100;
           const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} pcs`;
+          const label = unit === 'minutes' ? String(Math.round(value)) : fmt(Math.round(value));
           return <span key={category.label} className={`imprint-hour-segment ${category.className}`}
             style={{ width: `${width}%` }} title={`${category.label}: ${amount}${unit === 'pieces' && category.pieces !== 'good' && category.pieces !== 'scrap' ? ' equivalent' : ''}`}>
-            {width > 10 ? (unit === 'minutes' ? Math.round(value) : Math.round(value)) : ''}
+            <span className={`segment-number length-${Math.min(label.length, 6)}`} aria-hidden="true">{label}</span>
           </span>;
         })}
     </div>

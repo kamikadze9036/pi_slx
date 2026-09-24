@@ -20,6 +20,14 @@
 .theme-light .hour-unit-toggle button.active{color:#fff;background:#09815e}
 .hourly-head-actions{display:flex;align-items:center;gap:18px}
 .bar-segment.break,.legend .break{background:#5a9bc9}
+.bar-segment,.imprint-hour-segment{container-type:inline-size}
+.segment-number{display:none;font-family:'Barlow Condensed',sans-serif;font-size:13px;line-height:1;letter-spacing:0;color:#092028}
+@container (min-width:11px){.segment-number.length-1{display:block}}
+@container (min-width:16px){.segment-number.length-2{display:block}}
+@container (min-width:21px){.segment-number.length-3{display:block}}
+@container (min-width:26px){.segment-number.length-4{display:block}}
+@container (min-width:31px){.segment-number.length-5{display:block}}
+@container (min-width:36px){.segment-number.length-6{display:block}}
 .hour-piece-unavailable{align-self:center;padding-left:10px;color:#c5a677;font-size:11px;font-weight:700}
 .hour-piece-note{margin:9px 0 0;color:#9fb7bd;font-size:10px}
 .theme-light .hour-piece-note{color:#587177}

@@ -38,9 +38,10 @@ function HourRow({ hour, unit }: { hour: Hour; unit: HourUnit }) {
           const width = value / total * 100;
           const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} pcs`;
           const qualifier = unit === 'pieces' && pieces !== 'good' && pieces !== 'scrap' ? ' equivalent' : '';
+          const barLabel = unit === 'minutes' ? `${value.toFixed(1)}m` : number(Math.round(value));
           return <div key={key} className={`bar-segment ${className}`} style={{ width: `${width}%` }}
             title={`${label}: ${amount}${qualifier}`} aria-label={`${label}: ${amount}${qualifier}`}>
-            {width > 8 ? (unit === 'minutes' ? `${value.toFixed(1)}m` : number(Math.round(value))) : ''}
+            <span className={`segment-number length-${Math.min(barLabel.length, 6)}`} aria-hidden="true">{barLabel}</span>
           </div>;
         })}
       </div>
