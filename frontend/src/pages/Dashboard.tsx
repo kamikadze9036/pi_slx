@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { DashboardData, Hour } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
+import { HourUnitToggle, useHourUnit, type HourUnit } from '../HourUnit';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -9,37 +10,47 @@ const pct = (value: number | null | undefined) => value == null ? '—' : `${Mat
 const mins = (value: number) => `${Math.round(value / 60)}m`;
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-const categories: { key: keyof Hour; label: string; className: string }[] = [
-  { key: 'good_seconds', label: 'Good production', className: 'good' },
-  { key: 'speed_loss_seconds', label: 'Speed loss', className: 'speed' },
-  { key: 'microstop_seconds', label: 'Micro stops', className: 'micro' },
-  { key: 'downtime_seconds', label: 'Downtime', className: 'down' },
-  { key: 'scrap_loss_seconds', label: 'Scrap loss', className: 'scrap' },
-  { key: 'unknown_seconds', label: 'Unknown', className: 'unknown' },
+const categories: { key: keyof Hour; pieces: keyof NonNullable<Hour['piece_equivalents']>;
+  label: string; className: string }[] = [
+  { key: 'good_seconds', pieces: 'good', label: 'Good production', className: 'good' },
+  { key: 'speed_loss_seconds', pieces: 'speed_loss', label: 'Slow running', className: 'speed' },
+  { key: 'microstop_seconds', pieces: 'microstop', label: 'Micro stops', className: 'micro' },
+  { key: 'downtime_seconds', pieces: 'downtime', label: 'Downtime', className: 'down' },
+  { key: 'excluded_break_seconds', pieces: 'break', label: 'Break', className: 'break' },
+  { key: 'scrap_loss_seconds', pieces: 'scrap', label: 'Scrap', className: 'scrap' },
+  { key: 'unknown_seconds', pieces: 'unknown', label: 'Unknown', className: 'unknown' },
 ];
 
-function HourRow({ hour }: { hour: Hour }) {
+function HourRow({ hour, unit }: { hour: Hour; unit: HourUnit }) {
+  const equivalents = hour.piece_equivalents;
+  const values = categories.map(category => unit === 'minutes'
+    ? Number(hour[category.key]) / 60 : equivalents?.[category.pieces] ?? 0);
+  const total = unit === 'minutes' ? hour.duration_seconds / 60
+    : Math.max(1, values.reduce((sum, value) => sum + value, 0));
   return <div className={`hour-row ${hour.current ? 'is-current' : ''}`}>
     <div className="hour-time"><strong>{clock(hour.start)}</strong><span>{clock(hour.end)}</span></div>
     <div className="bar-wrap">
-      <div className="bar" aria-label={`${clock(hour.start)} to ${clock(hour.end)} production loss breakdown`}>
-        {categories.map(({ key, label, className }) => {
-          const value = hour[key] as number;
-          if (!value) return null;
-          const width = value / hour.duration_seconds * 100;
+      <div className="bar" aria-label={`${clock(hour.start)} to ${clock(hour.end)} ${unit} production breakdown`}>
+        {unit === 'pieces' && !equivalents ? <span className="hour-piece-unavailable">Ideal cycle unavailable</span>
+          : categories.map(({ key, pieces, label, className }, index) => {
+          const value = values[index];
+          if (value <= 0) return null;
+          const width = value / total * 100;
+          const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} pcs`;
+          const qualifier = unit === 'pieces' && pieces !== 'good' && pieces !== 'scrap' ? ' equivalent' : '';
           return <div key={key} className={`bar-segment ${className}`} style={{ width: `${width}%` }}
-            title={`${label}: ${(value / 60).toFixed(1)} min`} aria-label={`${label}: ${(value / 60).toFixed(1)} minutes`}>
-            {width > 8 ? `${(value / 60).toFixed(1)}m` : ''}
+            title={`${label}: ${amount}${qualifier}`} aria-label={`${label}: ${amount}${qualifier}`}>
+            {width > 8 ? (unit === 'minutes' ? `${value.toFixed(1)}m` : number(Math.round(value))) : ''}
           </div>;
         })}
       </div>
-      {hour.current && <span className="now-mark">NOW</span>}
+      {hour.current && unit === 'minutes' && <span className="now-mark">NOW</span>}
     </div>
     <div className="hour-metric"><span>OEE</span><strong>{pct(hour.oee)}</strong></div>
     <div className="hour-metric detail-metric"><span>PERF</span><strong>{pct(hour.performance)}</strong></div>
     <div className="hour-metric detail-metric"><span>GOOD / TGT</span><strong>{number(hour.good_count)}<em>/{hour.target_good == null ? '—' : number(hour.target_good)}</em></strong></div>
     <div className="hour-metric detail-metric"><span>SCRAP</span><strong>{number(hour.scrap_count)}</strong></div>
-    <div className="hour-metric detail-metric"><span>STOP</span><strong>{mins(hour.downtime_seconds)}</strong></div>
+    <div className="hour-metric detail-metric"><span>{unit === 'minutes' ? 'STOP' : 'STOP EQ'}</span><strong>{unit === 'minutes' ? mins(hour.downtime_seconds) : equivalents ? number(Math.round(equivalents.downtime)) : '—'}</strong></div>
   </div>;
 }
 
@@ -52,6 +63,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
   const [offline, setOffline] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(new Date());
+  const [hourUnit, chooseHourUnit] = useHourUnit();
 
   useEffect(() => {
     let mounted = true;
@@ -110,10 +122,12 @@ export function Dashboard({ displayId }: { displayId: string }) {
         <div><span>ACTUAL / Δ</span><strong>{number(production.actual_good)}</strong><small className={(production.delta || 0) < 0 ? 'negative' : 'positive'}>{production.delta == null ? '—' : `${production.delta > 0 ? '+' : ''}${number(production.delta)} VS TARGET`}</small></div></div>
     </section>
     <section className="chart-panel">
-      <div className="section-head"><div><span className="eyebrow">01 / SHIFT BREAKDOWN</span><h2>Where the time went</h2></div><span className="section-aside">HOURLY LOSS COMPOSITION <span>·</span> ELAPSED TIME ONLY</span></div>
-      <div className="bar-heading"><span>HOUR</span><span>TIME COMPOSITION <i></i> 60 MIN CAPACITY</span><span>OEE</span><span>PERF</span><span>GOOD / TGT</span><span>SCRAP</span><span>STOP</span></div>
-      <div className="hours">{data.hours!.map(hour => <HourRow key={hour.start} hour={hour} />)}</div>
-      <div className="legend">{categories.map(item => <span key={item.key}><i className={item.className}></i>{item.label}</span>)}<span><i className="future"></i>Future</span></div>
+      <div className="section-head"><div><span className="eyebrow">01 / SHIFT BREAKDOWN</span><h2>{hourUnit === 'minutes' ? 'Where the time went' : 'Where the output went'}</h2></div>
+        <div className="hourly-head-actions"><span className="section-aside">{hourUnit === 'minutes' ? 'HOURLY LOSS COMPOSITION · ELAPSED TIME ONLY' : 'GOOD / SCRAP ACTUAL · LOSSES ESTIMATED'}</span><HourUnitToggle unit={hourUnit} onChange={chooseHourUnit} /></div></div>
+      <div className="bar-heading"><span>HOUR</span><span>{hourUnit === 'minutes' ? 'TIME COMPOSITION · 60 MIN CAPACITY' : 'PIECE COMPOSITION · IDEAL CYCLE'}</span><span>OEE</span><span>PERF</span><span>GOOD / TGT</span><span>SCRAP</span><span>{hourUnit === 'minutes' ? 'STOP' : 'STOP EQ'}</span></div>
+      <div className="hours">{data.hours!.map(hour => <HourRow key={hour.start} hour={hour} unit={hourUnit} />)}</div>
+      <div className="legend">{categories.map(item => <span key={item.key}><i className={item.className}></i>{item.label}</span>)}{hourUnit === 'minutes' && <span><i className="future"></i>Future</span>}</div>
+      {hourUnit === 'pieces' && <p className="hour-piece-note">Good and scrap are actual pieces. Other categories are estimated piece equivalents from the ideal cycle. Breaks appear when configured in the source data.</p>}
     </section>
     <section className="summary-panel"><div className="summary-title"><span className="eyebrow">02 / SHIFT PERFORMANCE</span><h2>At a glance</h2></div>
       <div className="kpis">

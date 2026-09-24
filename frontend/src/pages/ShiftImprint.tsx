@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Hour, ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
+import { HourUnitToggle, useHourUnit } from '../HourUnit';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const fmt = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -58,12 +59,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
   const [offline, setOffline] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(new Date());
-  const [hourUnit, setHourUnit] = useState<'minutes' | 'pieces'>(() =>
-    window.localStorage.getItem('imprint-hour-unit') === 'pieces' ? 'pieces' : 'minutes');
-  const chooseHourUnit = (unit: 'minutes' | 'pieces') => {
-    window.localStorage.setItem('imprint-hour-unit', unit);
-    setHourUnit(unit);
-  };
+  const [hourUnit, chooseHourUnit] = useHourUnit();
   useEffect(() => {
     let mounted = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -141,7 +137,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       {!data.scrap_detail_available && <div className="detail-unavailable">Scrap report details are not mapped in the MES provider.</div>}
     </section>
     <section className="imprint-panel hourly-output"><div className="imprint-panel-head"><div><span className="eyebrow">02 / HOURLY OUTPUT</span><h2>Production by hour</h2></div>
-      <div className="hour-unit-toggle" role="group" aria-label="Hourly breakdown unit"><button type="button" className={hourUnit === 'minutes' ? 'active' : ''} aria-pressed={hourUnit === 'minutes'} onClick={() => chooseHourUnit('minutes')}>MINUTES</button><button type="button" className={hourUnit === 'pieces' ? 'active' : ''} aria-pressed={hourUnit === 'pieces'} onClick={() => chooseHourUnit('pieces')}>PIECES</button></div></div>
+      <HourUnitToggle unit={hourUnit} onChange={chooseHourUnit} /></div>
       <div className="imprint-hour-list">{hours.map(hour => <HourBreakdownRow key={hour.start} hour={hour} unit={hourUnit} />)}</div>
       <div className="imprint-hour-legend">{hourCategories.map(category => <span key={category.label}><i className={category.className}></i>{category.label}</span>)}</div>
       {hourUnit === 'pieces' && <p className="imprint-hour-note">Good and scrap are actual pieces. Other categories show estimated piece equivalents from the ideal cycle. Breaks appear when configured in the source data.</p>}

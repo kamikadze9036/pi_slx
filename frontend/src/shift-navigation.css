@@ -18,6 +18,12 @@
 .theme-light .hour-unit-toggle{border-color:#a9c0bc}
 .theme-light .hour-unit-toggle button{color:#49656b}
 .theme-light .hour-unit-toggle button.active{color:#fff;background:#09815e}
+.hourly-head-actions{display:flex;align-items:center;gap:18px}
+.bar-segment.break,.legend .break{background:#5a9bc9}
+.hour-piece-unavailable{align-self:center;padding-left:10px;color:#c5a677;font-size:11px;font-weight:700}
+.hour-piece-note{margin:9px 0 0;color:#9fb7bd;font-size:10px}
+.theme-light .hour-piece-note{color:#587177}
+@media(max-width:900px){.hourly-head-actions{gap:8px}}
 .imprint-hour-list{display:flex;flex-direction:column;gap:3px}
 .imprint-hour-row{display:grid;grid-template-columns:102px minmax(0,1fr) 120px 85px 76px;align-items:center;gap:10px;min-height:33px;border-bottom:1px solid #29434b}
 .imprint-hour-time{font-family:'Barlow Condensed',sans-serif;font-size:17px;white-space:nowrap}
