@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { ImprintData } from '../types';
+import type { Hour, ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
+import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const fmt = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -15,11 +16,49 @@ const categoryLabel: Record<string, string> = {
 };
 const categoryClass = (value: string) => Object.hasOwn(categoryLabel, value) ? value : 'other';
 
+const hourCategories: { label: string; className: string; seconds: keyof Hour;
+  pieces: keyof NonNullable<Hour['piece_equivalents']> }[] = [
+  { label: 'Good', className: 'good', seconds: 'good_seconds', pieces: 'good' },
+  { label: 'Slow running', className: 'speed', seconds: 'speed_loss_seconds', pieces: 'speed_loss' },
+  { label: 'Micro stops', className: 'micro', seconds: 'microstop_seconds', pieces: 'microstop' },
+  { label: 'Downtime', className: 'down', seconds: 'downtime_seconds', pieces: 'downtime' },
+  { label: 'Break', className: 'break', seconds: 'excluded_break_seconds', pieces: 'break' },
+  { label: 'Scrap', className: 'scrap', seconds: 'scrap_loss_seconds', pieces: 'scrap' },
+  { label: 'Unknown', className: 'unknown', seconds: 'unknown_seconds', pieces: 'unknown' },
+];
+
+function HourBreakdownRow({ hour, unit }: { hour: Hour; unit: 'minutes' | 'pieces' }) {
+  const equivalents = hour.piece_equivalents;
+  const values = hourCategories.map(category => unit === 'minutes'
+    ? Number(hour[category.seconds]) / 60 : equivalents?.[category.pieces] ?? 0);
+  const total = unit === 'minutes' ? hour.duration_seconds / 60 : Math.max(1, values.reduce((sum, value) => sum + value, 0));
+  return <div className="imprint-hour-row">
+    <strong className="imprint-hour-time">{clock(hour.start)}–{clock(hour.end)}</strong>
+    <div className="imprint-hour-bar" aria-label={`${clock(hour.start)} hourly ${unit} breakdown`}>
+      {unit === 'pieces' && !equivalents ? <span className="imprint-hour-unavailable">Ideal cycle unavailable</span>
+        : hourCategories.map((category, index) => {
+          const value = values[index];
+          if (value <= 0) return null;
+          const width = value / total * 100;
+          const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} pcs`;
+          return <span key={category.label} className={`imprint-hour-segment ${category.className}`}
+            style={{ width: `${width}%` }} title={`${category.label}: ${amount}${unit === 'pieces' && category.pieces !== 'good' && category.pieces !== 'scrap' ? ' equivalent' : ''}`}>
+            {width > 10 ? (unit === 'minutes' ? Math.round(value) : Math.round(value)) : ''}
+          </span>;
+        })}
+    </div>
+    <span className="imprint-hour-figure">GOOD <b>{fmt(hour.good_count)}</b></span>
+    <span className="imprint-hour-figure">SCRAP <b>{fmt(hour.scrap_count)}</b></span>
+    <span className="imprint-hour-figure">OEE <b>{pct(hour.oee)}</b></span>
+  </div>;
+}
+
 export function ShiftImprint({ displayId }: { displayId: string }) {
   const [data, setData] = useState<ImprintData | null>(null);
   const [offline, setOffline] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [now, setNow] = useState(new Date());
+  const [hourUnit, setHourUnit] = useState<'minutes' | 'pieces'>('minutes');
   useEffect(() => {
     let mounted = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -29,7 +68,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       const controller = new AbortController(); activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 6000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next: ImprintData = await response.json();
         if (mounted) { setData(next); setOffline(false); interval = next.refresh_seconds;
@@ -64,17 +103,18 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
   return <main className={`screen imprint-screen theme-${displayTheme(data.display.theme)}`}>
     <header className="topbar">
       <div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : 'LIVE MONITORING'}</div>
+      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : `${data.shift_navigation?.is_current ? 'CURRENT SHIFT' : 'HISTORICAL SHIFT'} · ${data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES DATA'}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div>
     </header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={`/display/${encodeURIComponent(displayId)}/hourly${themeQuery}`}>HOURLY LOSSES ↗</a><span className="selected">SHIFT IMPRINT</span></nav>
+    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly`)}>HOURLY LOSSES ↗</a><span className="selected">SHIFT IMPRINT</span></nav>
     {stale && <div className="stale-banner">Showing last available data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
+    <ShiftNavigator displayId={displayId} view="imprint" shift={shift} navigation={data.shift_navigation!} />
     <section className="imprint-head"><div><span className="eyebrow">SHIFT IMPRINT <span className="slash">/</span> {data.display.id.toUpperCase()}</span>
       <h1>{data.machine.name}</h1><p>{production.product || 'Product unavailable'} <span>·</span> {production.order || 'Order unavailable'}</p></div>
       <div className="imprint-shift"><span>{shift.name.toUpperCase()} SHIFT</span><strong>{clock(shift.start)} — {clock(shift.end)}</strong><small>{new Date(shift.start).toLocaleDateString()}</small></div></section>
     <section className="imprint-kpis">
       <div><span>GOOD PIECES</span><strong>{fmt(summary.good_count)}</strong><small>Target {production.target == null ? '—' : fmt(production.target)}</small></div>
-      <div><span>OEE</span><strong>{pct(summary.oee)}</strong><small>Shift to date</small></div>
+      <div><span>OEE</span><strong>{pct(summary.oee)}</strong><small>{data.shift_navigation?.is_current ? 'Shift to date' : 'Full shift'}</small></div>
       <div><span>DOWNTIME</span><strong className="red-text">{mins(summary.downtime_seconds)}</strong><small>Unplanned stops</small></div>
       <div><span>MICRO STOPS</span><strong className="purple-text">{mins(events.filter(item => item.category === 'micro_stop').reduce((sum, item) => sum + item.seconds, 0))}</strong><small>Short interruptions</small></div>
       <div><span>SCRAP</span><strong className="orange-text">{fmt(summary.scrap_count)}</strong><small>{pct(summary.scrap_percent)} of output</small></div>
@@ -95,11 +135,11 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       {!data.downtime_detail_available && <div className="detail-unavailable">Downtime event details are not mapped in the MES provider.</div>}
       {!data.scrap_detail_available && <div className="detail-unavailable">Scrap report details are not mapped in the MES provider.</div>}
     </section>
-    <section className="imprint-panel hourly-output"><div className="imprint-panel-head"><div><span className="eyebrow">02 / HOURLY OUTPUT</span><h2>Production by hour</h2></div><span>GOOD / TARGET / SCRAP</span></div>
-      <div className="output-cards">{hours.map(hour => <div className="output-card" key={hour.start}><span>{clock(hour.start)}–{clock(hour.end)}</span>
-        <strong>{fmt(hour.good_count)}</strong><small>GOOD / {hour.target_good == null ? '—' : fmt(hour.target_good)} TARGET</small>
-        <div className="output-progress"><i style={{ width: `${hour.target_good ? Math.min(100, hour.good_count / hour.target_good * 100) : 0}%` }}></i></div>
-        <div className="output-card-foot"><span>SCRAP <b>{hour.scrap_count}</b></span><span>OEE <b>{pct(hour.oee)}</b></span></div></div>)}</div>
+    <section className="imprint-panel hourly-output"><div className="imprint-panel-head"><div><span className="eyebrow">02 / HOURLY OUTPUT</span><h2>Production by hour</h2></div>
+      <div className="hour-unit-toggle" role="group" aria-label="Hourly breakdown unit"><button type="button" className={hourUnit === 'minutes' ? 'active' : ''} aria-pressed={hourUnit === 'minutes'} onClick={() => setHourUnit('minutes')}>MINUTES</button><button type="button" className={hourUnit === 'pieces' ? 'active' : ''} aria-pressed={hourUnit === 'pieces'} onClick={() => setHourUnit('pieces')}>PIECES</button></div></div>
+      <div className="imprint-hour-list">{hours.map(hour => <HourBreakdownRow key={hour.start} hour={hour} unit={hourUnit} />)}</div>
+      <div className="imprint-hour-legend">{hourCategories.map(category => <span key={category.label}><i className={category.className}></i>{category.label}</span>)}</div>
+      {hourUnit === 'pieces' && <p className="imprint-hour-note">Good and scrap are actual pieces. Other categories show estimated piece equivalents from the ideal cycle. Breaks appear when configured in the source data.</p>}
     </section>
     <section className="imprint-bottom"><div className="imprint-panel reasons-panel"><div className="imprint-panel-head"><div><span className="eyebrow">03 / DOWNTIME</span><h2>Stop reasons</h2></div><span>TOTAL ELAPSED</span></div>
       {(data.downtime_reasons || []).length ? <div className="reason-list">{data.downtime_reasons!.slice(0, 5).map(item => <div className="reason-row" key={`${item.category}-${item.reason}`}>

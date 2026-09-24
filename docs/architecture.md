@@ -27,5 +27,5 @@ The backend flags overlapping downtime events, invalid/out-of-shift timestamps, 
 - One site timezone is configured per deployment. Multiple sites require a `Plant` model and per-display timezone mapping.
 - Break exclusion is supported in the KPI input model but not yet configurable in the admin UI; the demo counts the full shift as planned time.
 - The admin UI supports creating/updating machines, displays, shifts, refresh rate, visible summary KPIs, and an OEE warning threshold. Category colors remain fixed for now.
-- The `GET /api/machines/{id}/shift/{shift_id}` endpoint returns the shift definition; historical shift dashboards require a date-aware query contract.
+- The `GET /api/machines/{id}/shift/{shift_id}` endpoint returns the shift definition. Historical display dashboards select a scheduled start via `shift_start`; their accuracy depends on the MES mapping returning the correct past order, counts, and events for that interval.
 - No production Ciclades mapping is supplied. Complete the mapping checklist before setting `MES_PROVIDER=ciclades`.

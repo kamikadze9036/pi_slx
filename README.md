@@ -20,6 +20,8 @@ simulated until the reviewed Ciclades mapping is enabled.
 
 Open `http://SERVER/fleet` for the 20-press plant overview, `http://SERVER/display/demo` for the hourly production display, `http://SERVER/display/demo/imprint` for the chronological shift imprint, and `http://SERVER/admin` for configuration. Admin can select which machines appear in the plant overview and set each display's default dashboard type and dark or light theme. The explicit `/hourly` and `/imprint` URLs remain available for either view. Append `?theme=light` or `?theme=dark` to a display or fleet URL for a temporary visual comparison without changing the saved setting. `HTTP_PORT` in `.env` changes the exposed web port (the local Windows demo uses `8088`). The frontend proxies `/api` to the backend; PostgreSQL and the backend are not exposed on the host. Admin writes require the `ADMIN_API_KEY` entered on the admin page. Keep the app inside a trusted LAN until a site authentication and HTTPS proxy are installed.
 
+Both display views have previous/next shift navigation. The selected shift is kept when switching between hourly losses and the shift imprint. The imprint's hourly rows can switch between minutes and pieces: good and scrap are actual piece counts, while lost pieces are estimates based on ideal cycle time. Breaks appear only when the source provides them. The API accepts an offset-aware `shift_start` query parameter on both display data endpoints; omitting it selects the active or most recently completed scheduled shift. Mock history is simulated, not stored production history.
+
 `docker compose logs -f backend` shows startup and errors. `docker compose down` stops services without deleting configuration. To run tests in the backend image:
 
 ```bash

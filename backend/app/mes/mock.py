@@ -20,7 +20,8 @@ class MockMesDataProvider:
                       "Dimension", "Incomplete fill", "Surface defect", "Dimension"]
 
     def fetch_shift(self, mes_machine_id: str, start: datetime, end: datetime, now: datetime) -> MesSnapshot:
-        profile_offset = sum(mes_machine_id.encode("utf-8")) % len(self._profile)
+        # Distinct scheduled shifts must have distinct demo histories.
+        profile_offset = (sum(mes_machine_id.encode("utf-8")) + start.toordinal() + start.hour // 8) % len(self._profile)
         observations = []
         downtime_events = []
         scrap_reports = []

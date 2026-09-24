@@ -7,7 +7,7 @@ from app.mes.ciclades import CicladesSqlServerProvider
 from app.services.cache import SnapshotCache
 from app.services.data_quality import validate_snapshot
 from app.services.kpi import LossInput, calculate
-from app.services.shifts import active_shift, hourly_intervals, utc_seconds
+from app.services.shifts import selected_shift, hourly_intervals, utc_seconds
 
 cache = SnapshotCache(5)
 provider = None
@@ -23,15 +23,17 @@ def get_provider():
             raise ValueError(f"Unsupported MES_PROVIDER: {settings.mes_provider}")
     return provider
 
-def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now: datetime, display_settings: dict | None = None):
+def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now: datetime,
+                    display_settings: dict | None = None, requested_start: datetime | None = None):
     display_settings = display_settings or {"refresh_seconds": settings.poll_seconds,
                                             "visible_kpis": [], "oee_warning_threshold": 0.7}
-    selected = active_shift(shifts, now, settings.site_timezone)
+    selected = selected_shift(shifts, now, settings.site_timezone, requested_start)
     if selected is None:
         return {"display": {"id": display.id, "name": display.name, "theme": display.theme},
                 "machine": {"id": machine.id, "name": machine.name}, "status": "outside_shift",
                 "server_time": now.isoformat(), "refresh_seconds": display_settings["refresh_seconds"]}
-    shift, shift_start, shift_end = selected
+    (shift, shift_start, shift_end), previous, following = selected
+    is_current = shift_start.astimezone(timezone.utc) <= now.astimezone(timezone.utc) < shift_end.astimezone(timezone.utc)
     key = (machine.mes_id, shift_start.isoformat())
     snapshot, stale = cache.get(key, lambda: get_provider().fetch_shift(machine.mes_id, shift_start, shift_end, now))
     source_warnings = validate_snapshot(snapshot, shift_start, shift_end)
@@ -54,6 +56,13 @@ def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now
         micro = observation.microstop_seconds if observation else 0
         ideal_cycle = (observation.ideal_cycle_seconds or machine.ideal_cycle_seconds) if observation else None
         result = calculate(LossInput(elapsed, good, scrap, downtime, ideal_cycle, machine.pieces_per_cycle, micro))
+        piece_rate = machine.pieces_per_cycle / ideal_cycle if ideal_cycle and ideal_cycle > 0 else None
+        piece_equivalents = ({"good": good, "speed_loss": result.speed_loss_seconds * piece_rate,
+                              "microstop": result.microstop_seconds * piece_rate,
+                              "downtime": result.downtime_seconds * piece_rate,
+                              "break": result.excluded_break_seconds * piece_rate,
+                              "scrap": scrap, "unknown": result.unknown_seconds * piece_rate}
+                             if piece_rate is not None else None)
         hours.append({"start": begin.isoformat(), "end": end.isoformat(),
                       "duration_seconds": duration, "elapsed_seconds": elapsed,
                       "good_seconds": result.good_seconds, "speed_loss_seconds": result.speed_loss_seconds,
@@ -61,6 +70,7 @@ def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now
                       "scrap_loss_seconds": result.scrap_loss_seconds, "unknown_seconds": result.unknown_seconds,
                       "excluded_break_seconds": result.excluded_break_seconds,
                       "good_count": good, "scrap_count": scrap,
+                      "piece_equivalents": piece_equivalents,
                       "target_good": round(snapshot.target_per_hour * elapsed / 3600) if snapshot.target_per_hour is not None else None,
                       "oee": result.oee, "performance": result.performance,
                       "status": result.status, "warnings": result.warnings,
@@ -85,10 +95,13 @@ def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now
     return {
         "status": "stale" if stale else "ok", "server_time": now.isoformat(),
         "last_successful_update": None if not stale else cache._entries[key][2],
-        "refresh_seconds": display_settings["refresh_seconds"], "display_settings": display_settings,
+        "refresh_seconds": display_settings["refresh_seconds"] if is_current else max(60, display_settings["refresh_seconds"]),
+        "display_settings": display_settings, "data_source": settings.mes_provider,
         "display": {"id": display.id, "name": display.name, "theme": display.theme},
         "machine": {"id": machine.id, "name": machine.name},
         "shift": {"id": shift.id, "name": shift.name, "start": shift_start.isoformat(), "end": shift_end.isoformat()},
+        "shift_navigation": {"previous": previous.isoformat() if previous else None,
+                             "next": following.isoformat() if following else None, "is_current": is_current},
         "production": {"product": snapshot.product, "order": snapshot.order,
                        "target": target, "actual_good": sum_good, "scrap": sum_scrap,
                        "delta": sum_good - target if target is not None else None},

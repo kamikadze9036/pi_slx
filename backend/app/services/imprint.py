@@ -1,14 +1,15 @@
 from datetime import datetime, timezone
 from app.db.models import Display, Machine, Shift
 from app.services.dashboard import build_dashboard, cache, get_provider
-from app.services.shifts import active_shift, hourly_intervals, utc_seconds
-from app.core.config import settings
+from app.services.shifts import hourly_intervals, utc_seconds
 
-def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: datetime, display_settings: dict | None = None):
-    dashboard = build_dashboard(display, machine, shifts, now, display_settings)
+def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: datetime,
+                  display_settings: dict | None = None, requested_start: datetime | None = None):
+    dashboard = build_dashboard(display, machine, shifts, now, display_settings, requested_start)
     if dashboard["status"] == "outside_shift":
         return dashboard
-    _, start, end = active_shift(shifts, now, settings.site_timezone)
+    start = datetime.fromisoformat(dashboard["shift"]["start"])
+    end = datetime.fromisoformat(dashboard["shift"]["end"])
     snapshot, _ = cache.get((machine.mes_id, start.isoformat()),
                             lambda: get_provider().fetch_shift(machine.mes_id, start, end, now))
     elapsed_end = min(end.astimezone(timezone.utc), now.astimezone(timezone.utc))
@@ -41,15 +42,13 @@ def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: 
     return {
         "status": dashboard["status"], "server_time": dashboard["server_time"],
         "last_successful_update": dashboard["last_successful_update"],
-        "refresh_seconds": dashboard["refresh_seconds"],
+        "refresh_seconds": dashboard["refresh_seconds"], "data_source": dashboard["data_source"],
         "display": dashboard["display"], "machine": dashboard["machine"],
-        "shift": dashboard["shift"], "production": dashboard["production"],
+        "shift": dashboard["shift"], "shift_navigation": dashboard["shift_navigation"],
+        "production": dashboard["production"],
         "summary": dashboard["summary"],
         "ticks": [begin.isoformat() for begin, _ in hourly_intervals(start, end)] + [end.isoformat()],
-        "hours": [{"start": hour["start"], "end": hour["end"], "good_count": hour["good_count"],
-                   "scrap_count": hour["scrap_count"], "downtime_seconds": hour["downtime_seconds"],
-                   "microstop_seconds": hour["microstop_seconds"], "oee": hour["oee"],
-                   "target_good": hour["target_good"]} for hour in dashboard["hours"]],
+        "hours": dashboard["hours"],
         "downtime_events": sorted(events, key=lambda item: item["start"]),
         "downtime_reasons": [{"category": category, "reason": reason, "seconds": seconds}
                              for (category, reason), seconds in sorted(reasons.items(), key=lambda pair: -pair[1])],

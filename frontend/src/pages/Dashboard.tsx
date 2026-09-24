@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DashboardData, Hour } from '../types';
 import { displayTheme, themeQuery } from '../theme';
+import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -62,7 +63,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
       activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 6000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next: DashboardData = await response.json();
         if (mounted) { setData(next); setOffline(false); setUpdatedAt(next.status === 'stale' && next.last_successful_update ? new Date(next.last_successful_update) : new Date()); interval = next.refresh_seconds; }
@@ -95,15 +96,16 @@ export function Dashboard({ displayId }: { displayId: string }) {
   return <main className={`screen theme-${displayTheme(data.display.theme)}`}>
     <header className="topbar">
       <div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : 'LIVE MONITORING'}</div>
+      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : `${data.shift_navigation?.is_current ? 'CURRENT SHIFT' : 'HISTORICAL SHIFT'} · ${data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES DATA'}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div>
     </header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><span className="selected">HOURLY LOSSES</span><a href={`/display/${encodeURIComponent(displayId)}/imprint${themeQuery}`}>SHIFT IMPRINT ↗</a></nav>
+    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><span className="selected">HOURLY LOSSES</span><a href={displayLink(`/display/${encodeURIComponent(displayId)}/imprint`)}>SHIFT IMPRINT ↗</a></nav>
     {stale && <div className="stale-banner">Showing last available data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
+    <ShiftNavigator displayId={displayId} view="hourly" shift={data.shift!} navigation={data.shift_navigation!} />
     <section className="headline">
       <div className="line-title"><div className="eyebrow">PRODUCTION LINE <span className="slash">/</span> {data.display.id.toUpperCase()}</div>
         <h1>{data.machine.name}</h1><div className="product-line">{production.product || 'Product unavailable'} <span>·</span> {production.order || 'Order unavailable'}</div></div>
-      <div className="headline-meta"><div><span>ACTIVE SHIFT</span><strong>{data.shift!.name}</strong><small>{clock(data.shift!.start)} — {clock(data.shift!.end)}</small></div>
+      <div className="headline-meta"><div><span>SELECTED SHIFT</span><strong>{data.shift!.name}</strong><small>{clock(data.shift!.start)} — {clock(data.shift!.end)}</small></div>
         <div><span>SHIFT TARGET</span><strong>{production.target == null ? '—' : number(production.target)}</strong><small>GOOD PIECES</small></div>
         <div><span>ACTUAL / Δ</span><strong>{number(production.actual_good)}</strong><small className={(production.delta || 0) < 0 ? 'negative' : 'positive'}>{production.delta == null ? '—' : `${production.delta > 0 ? '+' : ''}${number(production.delta)} VS TARGET`}</small></div></div>
     </section>
@@ -115,7 +117,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
     </section>
     <section className="summary-panel"><div className="summary-title"><span className="eyebrow">02 / SHIFT PERFORMANCE</span><h2>At a glance</h2></div>
       <div className="kpis">
-        {show('oee') && <Kpi label="OVERALL OEE" value={pct(summary.oee)} note="SHIFT TO DATE" accent={oeeWarning ? 'primary warning' : 'primary'} />}
+        {show('oee') && <Kpi label="OVERALL OEE" value={pct(summary.oee)} note={data.shift_navigation?.is_current ? 'SHIFT TO DATE' : 'FULL SHIFT'} accent={oeeWarning ? 'primary warning' : 'primary'} />}
         {show('availability') && <Kpi label="AVAILABILITY" value={pct(summary.availability)} />}
         {show('performance') && <Kpi label="PERFORMANCE" value={pct(summary.performance)} />}
         {show('quality') && <Kpi label="QUALITY" value={pct(summary.quality)} />}

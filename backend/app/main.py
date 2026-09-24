@@ -14,7 +14,7 @@ from app.db.session import SessionLocal, get_db
 from app.services.dashboard import build_dashboard
 from app.services.imprint import build_imprint
 from app.services.fleet import build_fleet
-from app.services.shifts import active_shift
+from app.services.shifts import InvalidShiftSelection, active_shift
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
@@ -101,14 +101,16 @@ def fleet_dashboard(db: Session = Depends(get_db)):
     return build_fleet(machines, displays, shifts, datetime.now(timezone.utc), dashboard_settings(db), excluded_mes_ids)
 
 @app.get("/api/displays/{display_id}/dashboard")
-def dashboard(display_id: str, db: Session = Depends(get_db)):
+def dashboard(display_id: str, shift_start: datetime | None = None, db: Session = Depends(get_db)):
     display = display_or_404(db, display_id)
     machine = machine_or_404(db, display.machine_id)
     if not machine.active:
         raise HTTPException(404, "Machine disabled")
     try:
         return build_dashboard(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
-                               datetime.now(timezone.utc), dashboard_settings(db))
+                               datetime.now(timezone.utc), dashboard_settings(db), shift_start)
+    except InvalidShiftSelection as exc:
+        raise HTTPException(422, str(exc)) from exc
     except Exception:
         log.exception("dashboard calculation failed display=%s", display_id)
         raise HTTPException(503, "MES data unavailable")
@@ -127,14 +129,16 @@ def heartbeat(display_id: str, payload: HeartbeatIn, request: Request, db: Sessi
     return {"ok": True}
 
 @app.get("/api/displays/{display_id}/shift-imprint")
-def shift_imprint(display_id: str, db: Session = Depends(get_db)):
+def shift_imprint(display_id: str, shift_start: datetime | None = None, db: Session = Depends(get_db)):
     display = display_or_404(db, display_id)
     machine = machine_or_404(db, display.machine_id)
     if not machine.active:
         raise HTTPException(404, "Machine disabled")
     try:
         return build_imprint(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
-                             datetime.now(timezone.utc), dashboard_settings(db))
+                             datetime.now(timezone.utc), dashboard_settings(db), shift_start)
+    except InvalidShiftSelection as exc:
+        raise HTTPException(422, str(exc)) from exc
     except Exception:
         log.exception("shift imprint calculation failed display=%s", display_id)
         raise HTTPException(503, "MES data unavailable")

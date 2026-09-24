@@ -11,6 +11,7 @@ import './imprint-compact.css';
 import './admin-settings.css';
 import './light.css';
 import './fleet.css';
+import './shift-navigation.css';
 
 const path = window.location.pathname;
 const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly))?/);

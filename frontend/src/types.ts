@@ -5,14 +5,18 @@ export interface Hour {
   excluded_break_seconds: number; good_count: number; scrap_count: number;
   target_good: number | null; oee: number | null; performance: number | null;
   status: string; warnings: string[]; current: boolean;
+  piece_equivalents?: { good: number; speed_loss: number; microstop: number;
+    downtime: number; break: number; scrap: number; unknown: number } | null;
 }
 export interface DashboardData {
   status: 'ok' | 'stale' | 'outside_shift'; server_time: string; refresh_seconds: number;
+  data_source?: 'mock' | 'ciclades';
   last_successful_update?: string | null;
   display_settings?: DashboardSettings;
   display: { id: string; name: string; theme: 'dark' | 'light' };
   machine: { id: string; name: string };
   shift?: { id: string; name: string; start: string; end: string };
+  shift_navigation?: { previous: string | null; next: string | null; is_current: boolean };
   production?: { product: string | null; order: string | null; target: number | null;
     actual_good: number; scrap: number; delta: number | null };
   hours?: Hour[];
@@ -30,8 +34,7 @@ export interface Display { id: string; name: string; machine_id: string;
   dashboard_type: string; theme: 'dark' | 'light'; active: boolean; online: boolean; last_seen: string | null }
 export interface ImprintData extends Omit<DashboardData, 'hours'> {
   ticks?: string[];
-  hours?: { start: string; end: string; good_count: number; scrap_count: number;
-    downtime_seconds: number; microstop_seconds: number; oee: number | null; target_good: number | null }[];
+  hours?: Hour[];
   downtime_events?: { start: string; end: string; category: string; reason: string; seconds: number }[];
   downtime_reasons?: { category: string; reason: string; seconds: number }[];
   scrap_reports?: { at: string; count: number; reason: string }[];
