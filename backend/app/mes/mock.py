@@ -22,6 +22,7 @@ class MockMesDataProvider:
     def fetch_shift(self, mes_machine_id: str, start: datetime, end: datetime, now: datetime) -> MesSnapshot:
         # Distinct scheduled shifts must have distinct demo histories.
         profile_offset = (sum(mes_machine_id.encode("utf-8")) + start.toordinal() + start.hour // 8) % len(self._profile)
+        shift_speed_adjustment = ((start.toordinal() + start.hour // 8) % 5 - 2) * 0.02
         observations = []
         downtime_events = []
         scrap_reports = []
@@ -34,6 +35,7 @@ class MockMesDataProvider:
                 continue
             profile_index = (index + profile_offset) % len(self._profile)
             downtime_ratio, slow_ratio, micro_ratio, scrap_ratio = self._profile[profile_index]
+            slow_ratio = max(0.0, min(0.45, slow_ratio + shift_speed_adjustment))
             stop_at = begin_utc + timedelta(seconds=elapsed)
             downtime = microstop = 0.0
             for offset, fraction, (category, reason) in [

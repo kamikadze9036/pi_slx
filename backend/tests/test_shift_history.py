@@ -61,6 +61,7 @@ def test_mock_history_changes_between_shifts():
     second = build_dashboard(DISPLAY, MACHINE, SHIFTS, now,
                              requested_start=datetime(2026, 9, 23, 14, tzinfo=PRAGUE))
     assert first["hours"][0]["good_count"] != second["hours"][0]["good_count"]
+    assert first["summary"]["good_count"] != second["summary"]["good_count"]
 
 
 def test_night_shift_history_across_dst_change():
