@@ -1,5 +1,12 @@
 services:
+  postgres:
+    networks:
+      default:
+        aliases:
+          - dashboard-postgres
   backend:
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-dashboard}:${POSTGRES_PASSWORD}@dashboard-postgres:5432/${POSTGRES_DB:-production_dashboard}
     networks:
       - default
       - euromap63
