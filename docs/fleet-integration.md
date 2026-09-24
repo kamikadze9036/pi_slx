@@ -2,6 +2,8 @@
 
 The `/fleet` screen is an overview of the injection press catalog. It shows current press state and shift performance as **separate data streams**. A stopped press can still have a strong shift OEE from earlier production; a low OEE does not prove it is stopped now.
 
+When `MES_PROVIDER=mock` but Euromap63 is connected, the fleet screen shows **live machine information only**: state, current order, actual/planned cycle time, worst-cavity scrap for the entire current order, and Euromap collector health. It does not show simulated OEE or shift counts on the fleet cards. The hourly and imprint detail screens still use simulated shift data and label it accordingly. Worst-cavity scrap comes from Cyclades `LIGOF` through Euromap63 and is cumulative for the order, not this shift. A collector status of `unknown` means no Euromap cycle collector is configured for that press; its live state may still come from Cyclades.
+
 ## Existing systems reviewed
 
 - [euromap63](https://github.com/kamikadze9036/euromap63) already has a hall view and a cached `GET /api/machines/status` endpoint for 20 presses. Its `cyclades_mac_refmac` is the join key to Ciclades; `P2700-01` has Euromap `machine_code=KM-MC5-01`.
@@ -20,6 +22,8 @@ EUROMAP63_FRONTEND_URL=http://YOUR-VM-HOSTNAME-OR-IP:8092
 ```
 
 Docker Compose maps `host.docker.internal` to the host gateway for the backend container. The API URL is fetched server-side once per overview refresh; the frontend URL only creates a browser link to the existing detail page. The service uses the Euromap63 `cyclades_mac_refmac` field to join to our `Machine.mes_id`. If the live API fails, live-state counts become unavailable rather than zero, while existing KPI cards remain visible. If Euromap63 knows a press that this app has not configured, it still appears as `KPI NOT CONNECTED`.
+
+The fleet backend also reads `GET /api/collectors/health` once per refresh. Collector failures leave its health fields unavailable without changing machine states. Cycle times and the worst cavity for the current order come from `GET /api/machines/status`. No Euromap cycle count is turned into good pieces: cavity count, cycle resets, and order assignment must be validated first.
 
 ## Connect shift KPIs
 

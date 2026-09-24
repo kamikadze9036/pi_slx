@@ -39,6 +39,7 @@ The admin page also controls the dashboard refresh interval, visible summary KPI
 - The KPI engine calculates good time, scrap-equivalent time, speed loss, micro stops, and downtime. The API provides precomputed bars and KPI values so the kiosk does little work.
 - The shift imprint shows a chronological machine-state track, hourly good/target/scrap output, stop reasons, and reported scrap reasons. Its event track is intentionally different from the category-aggregated bars on the hourly screen.
 - The plant overview combines shift KPIs calculated here with optional current press states from the existing Euromap63 `/api/machines/status` endpoint. It isolates failures per machine and distinguishes missing KPI data from a stopped press. See [docs/fleet-integration.md](docs/fleet-integration.md).
+- On a VM with `MES_PROVIDER=mock` and a live Euromap63 connection, the plant overview displays real state, order, cycle time, current-order worst-cavity scrap and collector health, and hides simulated shift KPIs. The hourly and imprint demo screens remain simulated.
 - MES snapshots are cached for five seconds per machine and shift. When the source fails, the last valid snapshot is returned as stale and the display shows a connection warning.
 - Admin settings reside in PostgreSQL; MES production history is not copied there.
 

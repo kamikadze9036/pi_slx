@@ -47,13 +47,31 @@ def live_machine_rows():
     return [], "not_configured"
 
 
-def _card(machine, display, shifts, now, display_settings):
+def collector_health_rows():
+    """Read Euromap collector health once per overview; it is separate from MES state."""
+    if not settings.euromap63_api_url:
+        return []
+    try:
+        response = httpx.get(settings.euromap63_api_url.rstrip("/") + "/api/collectors/health", timeout=4)
+        response.raise_for_status()
+        rows = response.json()
+        if not isinstance(rows, list):
+            raise ValueError("Expected a list of collector health rows")
+        return [row for row in rows if isinstance(row, dict)]
+    except (httpx.HTTPError, ValueError):
+        log.exception("Euromap63 collector health unavailable")
+        return []
+
+
+def _card(machine, display, shifts, now, display_settings, skip_kpis=False):
     base = {"id": machine.id, "name": machine.name, "mes_id": machine.mes_id,
             "display_id": display.id if display else None,
             "kpi_state": "unavailable", "oee": None, "good_count": None,
             "target_good": None, "scrap_count": None, "downtime_seconds": None,
             "shift_name": None, "product": None, "order": None,
             "warnings": [], "last_successful_update": None}
+    if skip_kpis:
+        return {**base, "kpi_state": "no_data"}
     try:
         candidate = display or SimpleNamespace(id=machine.id, name=machine.name, theme="light")
         data = build_dashboard(candidate, machine, shifts, now, display_settings)
@@ -83,6 +101,9 @@ def _card(machine, display, shifts, now, display_settings):
 def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[Shift],
                 now: datetime, display_settings: dict, excluded_mes_ids: set[str] | None = None):
     live_rows, live_source = live_machine_rows()
+    live_only = settings.mes_provider == "mock" and live_source != "demo"
+    health_rows = collector_health_rows() if live_source == "euromap63" else []
+    health_by_code = {str(row["machine_code"]): row for row in health_rows if row.get("machine_code")}
     live_by_mes = {str(row.get("cyclades_mac_refmac") or row.get("machine_code")): row
                    for row in live_rows if row.get("cyclades_mac_refmac") or row.get("machine_code")}
     display_by_machine = {}
@@ -90,7 +111,7 @@ def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[S
         display_by_machine.setdefault(display.machine_id, display)
 
     # Initialize the provider before workers start; its SQL engine is then shared safely.
-    if machines:
+    if machines and not live_only:
         try:
             get_provider()
         except Exception:
@@ -99,7 +120,7 @@ def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[S
     cards = []
     with ThreadPoolExecutor(max_workers=min(5, max(1, len(machines)))) as executor:
         futures = {executor.submit(_card, machine, display_by_machine.get(machine.id),
-                                   shifts, now, display_settings): machine for machine in machines}
+                                   shifts, now, display_settings, live_only): machine for machine in machines}
         for future in as_completed(futures):
             cards.append(future.result())
 
@@ -117,12 +138,18 @@ def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[S
     detail_base = settings.euromap63_frontend_url.rstrip("/")
     for card in cards:
         row = live_by_mes.get(card["mes_id"], {})
+        health = health_by_code.get(str(row.get("machine_code")), {})
+        cavity = row.get("worst_cavity_scrap")
         card["live_state"] = row.get("state") if live_source in ("euromap63", "demo") else None
         card["stop_reason"] = row.get("stop_reason")
-        card["order"] = None if row.get("state") == "bez_zakazky" else row.get("order_ref") or card["order"]
+        card["order"] = None if row.get("state") == "bez_zakazky" else (
+            row.get("order_ref") if live_only else row.get("order_ref") or card["order"])
         card["tool"] = row.get("tool_label") or row.get("tool_ref")
         card["cycle_time_real_s"] = row.get("cycle_time_real_s")
         card["cycle_time_planned_s"] = row.get("cycle_time_planned_s")
+        card["collector_status"] = health.get("status") if health.get("status") in ("ok", "stale", "unknown") else None
+        card["last_cycle_age_s"] = health.get("seconds_since_last_cycle")
+        card["worst_cavity_scrap"] = cavity if isinstance(cavity, dict) and cavity.get("reject_pct") is not None else None
         card["live_detail_url"] = (f"{detail_base}/machine.html?code={quote(str(row['machine_code']))}"
                                    if detail_base and row.get("machine_code") else None)
     cards.sort(key=lambda card: press_sort_key(card["mes_id"]))
@@ -135,6 +162,9 @@ def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[S
                         "running": sum(card["live_state"] == "bezi" for card in cards) if live_available else None,
                         "stopped": sum(card["live_state"] == "stoji" for card in cards) if live_available else None,
                         "without_order": sum(card["live_state"] == "bez_zakazky" for card in cards) if live_available else None,
+                        "with_cycle_time": sum(card["cycle_time_real_s"] is not None for card in cards) if live_available else None,
+                        "collectors_online": sum(card["collector_status"] == "ok" for card in cards) if health_rows else None,
+                        "collectors_stale": sum(card["collector_status"] == "stale" for card in cards) if health_rows else None,
                         "attention": sum(card["kpi_state"] == "attention" for card in cards),
                         "unavailable": sum(card["kpi_state"] in ("unavailable", "stale", "unconfigured", "no_data") for card in cards),
                         "average_oee": sum(valid_oee) / len(valid_oee) if valid_oee else None},

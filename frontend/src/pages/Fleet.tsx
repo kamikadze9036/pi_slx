@@ -5,6 +5,8 @@ import { displayTheme, themeQuery } from '../theme';
 const fmt = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US').format(value);
 const pct = (value: number | null) => value == null ? '—' : `${Math.round(value * 100)}%`;
 const mins = (value: number | null) => value == null ? '—' : `${Math.round(value / 60)}m`;
+const cycle = (value: number | null) => value == null ? '—' : `${value.toFixed(1)}s`;
+const age = (value: number | null) => value == null ? '—' : value < 60 ? `${Math.round(value)}s` : `${Math.round(value / 60)}m`;
 const liveLabels: Record<string, string> = {
   bezi: 'RUNNING', stoji: 'STOPPED', bez_zakazky: 'NO ORDER', neznamo: 'UNKNOWN'
 };
@@ -14,22 +16,31 @@ const kpiLabels: Record<string, string> = {
   unavailable: 'MES UNAVAILABLE', unconfigured: 'KPI NOT CONNECTED'
 };
 
-function MachineCard({ machine }: { machine: FleetMachine }) {
+function MachineCard({ machine, liveOnly }: { machine: FleetMachine; liveOnly: boolean }) {
   const href = machine.display_id ? `/display/${encodeURIComponent(machine.display_id)}${themeQuery}` : machine.live_detail_url;
   const statusClass = machine.live_state === 'stoji' ? 'is-stopped'
     : machine.live_state === 'bez_zakazky' ? 'is-no-order'
-    : machine.kpi_state === 'attention' ? 'is-attention'
+    : !liveOnly && machine.kpi_state === 'attention' ? 'is-attention'
     : machine.live_state === 'bezi' ? 'is-running' : 'is-unknown';
   const content = <>
     <div className="fleet-card-top"><strong>{machine.mes_id}</strong><span className="fleet-live-label">{liveLabels[machine.live_state || ''] || 'STATE UNKNOWN'}</span></div>
     <div className="fleet-card-name" title={machine.name}>{machine.name}</div>
     <div className="fleet-card-order" title={machine.order || ''}>{machine.stop_reason && machine.live_state === 'stoji'
       ? `STOP · ${machine.stop_reason}` : machine.order ? `OF · ${machine.order}` : 'NO ACTIVE ORDER DATA'}</div>
-    <div className="fleet-card-main"><div><small>SHIFT OEE</small><strong>{pct(machine.oee)}</strong></div>
-      <div className="fleet-good"><small>GOOD / TARGET</small><strong>{fmt(machine.good_count)}<em> / {fmt(machine.target_good)}</em></strong></div></div>
-    <div className="fleet-progress"><i style={{ width: `${machine.good_count != null && machine.target_good ? Math.min(100, machine.good_count / machine.target_good * 100) : 0}%` }} /></div>
-    <div className="fleet-card-metrics"><span>SCRAP <strong>{fmt(machine.scrap_count)}</strong></span><span>DOWNTIME <strong>{mins(machine.downtime_seconds)}</strong></span></div>
-    <div className="fleet-card-foot"><span>{kpiLabels[machine.kpi_state]}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
+    {liveOnly ? <>
+      <div className="fleet-card-main"><div><small>ACTUAL / PLANNED CYCLE</small><strong>{cycle(machine.cycle_time_real_s)}</strong></div>
+        <div className="fleet-good"><small>PLAN</small><strong>{cycle(machine.cycle_time_planned_s)}</strong></div></div>
+      <div className="fleet-card-metrics fleet-live-metrics"><span title="Worst cavity reject rate for the current order, not this shift">WORST CAVITY · OF <strong>{machine.worst_cavity_scrap ? `${machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></span>
+        <span>{machine.worst_cavity_scrap?.cavity_no != null ? `CAVITY ${machine.worst_cavity_scrap.cavity_no}` : ''}</span></div>
+      <div className="fleet-card-foot"><span>{machine.collector_status === 'ok' ? `EUROMAP LIVE · LAST CYCLE ${age(machine.last_cycle_age_s)}`
+        : machine.collector_status === 'stale' ? 'EUROMAP COLLECTOR STALE' : 'CYCLADES LIVE STATE'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
+    </> : <>
+      <div className="fleet-card-main"><div><small>SHIFT OEE</small><strong>{pct(machine.oee)}</strong></div>
+        <div className="fleet-good"><small>GOOD / TARGET</small><strong>{fmt(machine.good_count)}<em> / {fmt(machine.target_good)}</em></strong></div></div>
+      <div className="fleet-progress"><i style={{ width: `${machine.good_count != null && machine.target_good ? Math.min(100, machine.good_count / machine.target_good * 100) : 0}%` }} /></div>
+      <div className="fleet-card-metrics"><span>SCRAP <strong>{fmt(machine.scrap_count)}</strong></span><span>DOWNTIME <strong>{mins(machine.downtime_seconds)}</strong></span></div>
+      <div className="fleet-card-foot"><span>{kpiLabels[machine.kpi_state]}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
+    </>}
   </>;
   return href ? <a className={`fleet-card ${statusClass}`} href={href}>{content}</a>
     : <article className={`fleet-card ${statusClass}`}>{content}</article>;
@@ -72,26 +83,33 @@ export function Fleet() {
     : data.live_source === 'demo' ? 'DEMO / SIMULATED DATA'
     : data.live_source === 'unavailable' ? 'LIVE STATE CONNECTION LOST' : 'LIVE STATE NOT CONNECTED';
   const kpiSource = data.data_source === 'mock' ? 'SIMULATED SHIFT KPI' : 'CICLADES SHIFT KPI';
+  const liveOnly = data.data_source === 'mock' && data.live_source !== 'demo';
   const coverage = data.machines.filter(machine => machine.oee != null && machine.kpi_state !== 'stale').length;
   return <main className={`screen fleet-screen theme-${theme}`}>
     <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${offline ? 'stale' : ''}`}></span>{offline ? 'DATA CONNECTION LOST' : `${source} · ${kpiSource}`}</div>
+      <div className="top-status"><span className={`status-dot ${offline ? 'stale' : ''}`}></span>{offline ? 'DATA CONNECTION LOST' : liveOnly ? `${source} · LIVE VALUES` : `${source} · ${kpiSource}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span>
         <strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div></header>
     {offline && <div className="stale-banner">Showing last available plant overview · Retrying</div>}
     <section className="fleet-head"><div><span className="eyebrow">PLANT / INJECTION MOULDING</span><h1>Production overview</h1>
-      <p>{data.summary.total} presses · live state and current shift performance</p></div>
-      <div className="fleet-head-side"><span>{kpiSource}</span><strong>{coverage} / {data.summary.total}</strong><small>SHIFT KPI COVERAGE</small></div></section>
+      <p>{data.summary.total} presses · {liveOnly ? 'machine state, cycle and current-order cavity scrap' : 'live state and current shift performance'}</p></div>
+      <div className="fleet-head-side"><span>{liveOnly ? 'LIVE DATA' : kpiSource}</span><strong>{liveOnly ? `${fmt(data.summary.with_cycle_time)} / ${data.summary.total}` : `${coverage} / ${data.summary.total}`}</strong><small>{liveOnly ? 'CYCLE TIME COVERAGE' : 'SHIFT KPI COVERAGE'}</small></div></section>
     <section className="fleet-summary" aria-label="Plant summary">
       <div><span>RUNNING</span><strong className="run-color">{fmt(data.summary.running)}</strong></div>
       <div><span>STOPPED</span><strong className="stop-color">{fmt(data.summary.stopped)}</strong></div>
       <div><span>NO ORDER</span><strong>{fmt(data.summary.without_order)}</strong></div>
-      <div><span>LOW OEE</span><strong className="warn-color">{data.summary.attention}</strong></div>
-      <div><span>DATA GAPS</span><strong>{data.summary.unavailable}</strong></div>
-      <div><span>AVERAGE OEE</span><strong>{pct(data.summary.average_oee)}</strong></div>
+      {liveOnly ? <>
+        <div><span>CYCLE TIMES</span><strong>{fmt(data.summary.with_cycle_time)}</strong></div>
+        <div><span>EUROMAP COLLECTORS</span><strong>{fmt(data.summary.collectors_online)}</strong></div>
+        <div><span>STALE COLLECTORS</span><strong className="warn-color">{fmt(data.summary.collectors_stale)}</strong></div>
+      </> : <>
+        <div><span>LOW OEE</span><strong className="warn-color">{data.summary.attention}</strong></div>
+        <div><span>DATA GAPS</span><strong>{data.summary.unavailable}</strong></div>
+        <div><span>AVERAGE OEE</span><strong>{pct(data.summary.average_oee)}</strong></div>
+      </>}
     </section>
-    <div className="fleet-grid" aria-label="Machines">{data.machines.map(machine => <MachineCard key={machine.id} machine={machine} />)}</div>
-    <footer><span>SHIFT OEE LIMIT {Math.round(data.oee_warning_threshold * 100)}% <span className="footer-sep">/</span> LIVE STATE: {source} <span className="footer-sep">/</span> {kpiSource}</span>
+    <div className="fleet-grid" aria-label="Machines">{data.machines.map(machine => <MachineCard key={machine.id} machine={machine} liveOnly={liveOnly} />)}</div>
+    <footer><span>{liveOnly ? 'SHIFT KPI DEMO ONLY IN DETAIL' : `SHIFT OEE LIMIT ${Math.round(data.oee_warning_threshold * 100)}%`} <span className="footer-sep">/</span> LIVE STATE: {source} <span className="footer-sep">/</span> {liveOnly ? 'CAVITY SCRAP = CURRENT ORDER' : kpiSource}</span>
       <span>SHOWN BY MACHINE NUMBER · SELECT A PRESS FOR DETAILS</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>
   </main>;
 }
