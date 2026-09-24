@@ -71,16 +71,17 @@ export function Fleet() {
   const source = data.live_source === 'euromap63' ? 'EUROMAP63 LIVE STATE'
     : data.live_source === 'demo' ? 'DEMO / SIMULATED DATA'
     : data.live_source === 'unavailable' ? 'LIVE STATE CONNECTION LOST' : 'LIVE STATE NOT CONNECTED';
+  const kpiSource = data.data_source === 'mock' ? 'SIMULATED SHIFT KPI' : 'CICLADES SHIFT KPI';
   const coverage = data.machines.filter(machine => machine.oee != null && machine.kpi_state !== 'stale').length;
   return <main className={`screen fleet-screen theme-${theme}`}>
     <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${offline ? 'stale' : ''}`}></span>{offline ? 'DATA CONNECTION LOST' : source}</div>
+      <div className="top-status"><span className={`status-dot ${offline ? 'stale' : ''}`}></span>{offline ? 'DATA CONNECTION LOST' : `${source} · ${kpiSource}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span>
         <strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div></header>
     {offline && <div className="stale-banner">Showing last available plant overview · Retrying</div>}
     <section className="fleet-head"><div><span className="eyebrow">PLANT / INJECTION MOULDING</span><h1>Production overview</h1>
       <p>{data.summary.total} presses · live state and current shift performance</p></div>
-      <div className="fleet-head-side"><span>{source}</span><strong>{coverage} / {data.summary.total}</strong><small>SHIFT KPI COVERAGE</small></div></section>
+      <div className="fleet-head-side"><span>{kpiSource}</span><strong>{coverage} / {data.summary.total}</strong><small>SHIFT KPI COVERAGE</small></div></section>
     <section className="fleet-summary" aria-label="Plant summary">
       <div><span>RUNNING</span><strong className="run-color">{fmt(data.summary.running)}</strong></div>
       <div><span>STOPPED</span><strong className="stop-color">{fmt(data.summary.stopped)}</strong></div>
@@ -90,7 +91,7 @@ export function Fleet() {
       <div><span>AVERAGE OEE</span><strong>{pct(data.summary.average_oee)}</strong></div>
     </section>
     <div className="fleet-grid" aria-label="Machines">{data.machines.map(machine => <MachineCard key={machine.id} machine={machine} />)}</div>
-    <footer><span>SHIFT OEE LIMIT {Math.round(data.oee_warning_threshold * 100)}% <span className="footer-sep">/</span> LIVE STATE: {source}</span>
+    <footer><span>SHIFT OEE LIMIT {Math.round(data.oee_warning_threshold * 100)}% <span className="footer-sep">/</span> LIVE STATE: {source} <span className="footer-sep">/</span> {kpiSource}</span>
       <span>SHOWN BY MACHINE NUMBER · SELECT A PRESS FOR DETAILS</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>
   </main>;
 }
