@@ -12,6 +12,12 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
+For the factory VM (`spc-vm`), deploy the `codex/plant-overview` branch into
+`~/pi_slx` and run `bash deploy/spc-vm.sh`. The script creates a private `.env`
+on first run, exposes port `8088`, and joins the backend to the existing
+Euromap63 Docker network for live machine state. Shift KPI values remain
+simulated until the reviewed Ciclades mapping is enabled.
+
 Open `http://SERVER/fleet` for the 20-press plant overview, `http://SERVER/display/demo` for the hourly production display, `http://SERVER/display/demo/imprint` for the chronological shift imprint, and `http://SERVER/admin` for configuration. Admin can select which machines appear in the plant overview and set each display's default dashboard type and dark or light theme. The explicit `/hourly` and `/imprint` URLs remain available for either view. Append `?theme=light` or `?theme=dark` to a display or fleet URL for a temporary visual comparison without changing the saved setting. `HTTP_PORT` in `.env` changes the exposed web port (the local Windows demo uses `8088`). The frontend proxies `/api` to the backend; PostgreSQL and the backend are not exposed on the host. Admin writes require the `ADMIN_API_KEY` entered on the admin page. Keep the app inside a trusted LAN until a site authentication and HTTPS proxy are installed.
 
 `docker compose logs -f backend` shows startup and errors. `docker compose down` stops services without deleting configuration. To run tests in the backend image:

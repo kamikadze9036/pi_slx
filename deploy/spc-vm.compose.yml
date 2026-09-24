@@ -1,0 +1,10 @@
+services:
+  backend:
+    networks:
+      - default
+      - euromap63
+
+networks:
+  euromap63:
+    external: true
+    name: euromap63-docker_default
