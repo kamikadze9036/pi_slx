@@ -25,6 +25,8 @@ Docker Compose maps `host.docker.internal` to the host gateway for the backend c
 
 The fleet backend also reads `GET /api/collectors/health` once per refresh. Collector failures leave its health fields unavailable without changing machine states. Cycle times and the worst cavity for the current order come from `GET /api/machines/status`. No Euromap cycle count is turned into good pieces: cavity count, cycle resets, and order assignment must be validated first.
 
+Cyclades' own per-cycle traceability table is a separate feed from the Euromap63 collector in this repository. The local `pi_cyclades` inventory at commit `7a291d8` found traceability rows only for `P1100-03` as of 2026-09-24. It does not expand cycle coverage to the other presses or establish an hourly good-piece count. See [ciclades-mapping.md](ciclades-mapping.md).
+
 ## Connect shift KPIs
 
 Set `MES_PROVIDER=ciclades`, supply a read-only SQL Server DSN and a reviewed JSON query mapping as described in [ciclades-mapping.md](ciclades-mapping.md). Create a `Machine` for each press in the admin page with `mes_id` equal to its Ciclades `MAC_REFMAC`, correct pieces per cycle and ideal cycle time, and `SHOW IN PLANT OVERVIEW` enabled. Create a Display mapping for presses that need this app's hourly/imprint drilldown. Unconfigured presses can still link to the existing Euromap63 detail page if `EUROMAP63_FRONTEND_URL` is set.
