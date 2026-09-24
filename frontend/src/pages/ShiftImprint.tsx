@@ -47,7 +47,7 @@ function HourBreakdownRow({ hour, unit }: { hour: Hour; unit: 'minutes' | 'piece
           </span>;
         })}
     </div>
-    <span className="imprint-hour-figure">GOOD <b>{fmt(hour.good_count)}</b></span>
+    <span className="imprint-hour-figure">GOOD/TGT <b>{fmt(hour.good_count)}/{hour.target_good == null ? '—' : fmt(hour.target_good)}</b></span>
     <span className="imprint-hour-figure">SCRAP <b>{fmt(hour.scrap_count)}</b></span>
     <span className="imprint-hour-figure">OEE <b>{pct(hour.oee)}</b></span>
   </div>;

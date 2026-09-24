@@ -19,7 +19,7 @@
 .theme-light .hour-unit-toggle button{color:#49656b}
 .theme-light .hour-unit-toggle button.active{color:#fff;background:#09815e}
 .imprint-hour-list{display:flex;flex-direction:column;gap:3px}
-.imprint-hour-row{display:grid;grid-template-columns:102px minmax(0,1fr) 85px 85px 76px;align-items:center;gap:10px;min-height:33px;border-bottom:1px solid #29434b}
+.imprint-hour-row{display:grid;grid-template-columns:102px minmax(0,1fr) 120px 85px 76px;align-items:center;gap:10px;min-height:33px;border-bottom:1px solid #29434b}
 .imprint-hour-time{font-family:'Barlow Condensed',sans-serif;font-size:17px;white-space:nowrap}
 .imprint-hour-bar{display:flex;height:23px;align-items:center;background:#19343d;overflow:hidden;border-radius:2px}
 .imprint-hour-segment{height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap;color:#092028;font-size:10px;font-weight:800;border-right:1px solid #17313a}
@@ -41,4 +41,4 @@
 .theme-light .imprint-hour-bar{background:#dce8e4}
 .theme-light .imprint-hour-figure,.theme-light .imprint-hour-legend,.theme-light .imprint-hour-note{color:#587177}
 .theme-light .imprint-hour-figure b{color:#1d383c}
-@media(max-width:900px){.imprint-hour-row{grid-template-columns:85px minmax(0,1fr) 70px;gap:5px}.imprint-hour-figure:nth-last-child(-n+2){display:none}.imprint-hour-time{font-size:14px}}
+@media(max-width:900px){.imprint-hour-row{grid-template-columns:85px minmax(0,1fr) 112px;gap:5px}.imprint-hour-figure:nth-last-child(-n+2){display:none}.imprint-hour-time{font-size:14px}}
