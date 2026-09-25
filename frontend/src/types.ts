@@ -28,11 +28,16 @@ export interface DashboardData {
     machine_code: string; detail_url: string | null;
     stop_source: 'cycles' | 'histo_events' | null;
     downtime_available: boolean; cycles_endpoint_available: boolean; cycles_available: boolean;
+    cycle_source: 'recorded' | 'counter' | null; bin_minutes: number;
+    current_machine: { state?: string | null; order_ref?: string | null;
+      cycle_time_real_s?: number | null; cycle_time_planned_s?: number | null;
+      stop_reason?: string | null;
+      worst_cavity_scrap?: { reject_pct: number; cavity_no?: number | null } | null } | null;
     hours: { start: string; end: string; elapsed_seconds: number; cycle_count: number | null;
       stop_seconds: number | null; stop_count: number | null }[];
     cycle_bins: { start: string; count: number }[];
     downtime_events: { start: string; end: string; seconds: number; reason: string }[];
-    summary: { recorded_cycles: number | null; observed_stop_seconds: number | null;
+    summary: { cycle_count: number | null; observed_stop_seconds: number | null;
       observed_stop_count: number | null };
   };
 }

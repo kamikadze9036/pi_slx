@@ -5,6 +5,10 @@
 .real-shift-head p{color:var(--real-muted);margin:0}
 .real-shift-head a{color:#44caa0;text-decoration:none;font-size:11px;font-weight:800;white-space:nowrap}
 .theme-light .real-shift-head a{color:#087b5a}
+.real-current-machine{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--real-border);border:1px solid var(--real-border);margin-bottom:10px}
+.real-current-machine>div{background:var(--real-panel);padding:9px 12px;min-width:0}
+.real-current-machine span{display:block;color:var(--real-muted);font-size:9px;font-weight:800;letter-spacing:.07em;margin-bottom:5px}
+.real-current-machine strong{display:block;color:var(--real-ink);font-family:'Barlow Condensed',sans-serif;font-size:21px;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .real-shift-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--real-border);border-top:3px solid #38bd90;background:var(--real-panel)}
 .real-shift-kpis>div{display:flex;flex-direction:column;gap:2px;padding:12px 18px;border-right:1px solid var(--real-border)}
 .real-shift-kpis>div:last-child{border-right:0}
@@ -35,4 +39,4 @@
 .real-stop-list>div:last-child{border-bottom:0}.real-stop-list span{color:var(--real-muted)}.real-stop-list strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.real-stop-list b{text-align:right;color:#ee8179}
 .theme-light .real-stop-list b{color:#bd2e3a}
 .real-shift-screen footer{margin-top:12px}
-@media(max-width:750px){.real-shift-head{align-items:start;flex-direction:column}.real-shift-kpis>div{padding:9px}.real-shift-kpis strong{font-size:30px}.real-shift-kpis small{font-size:9px}.real-hour-heading,.real-hour-row{grid-template-columns:82px minmax(0,1fr) 50px 68px;gap:6px}.real-hour-heading span:nth-child(4),.real-hour-row>span:nth-last-child(2){display:none}.real-hour-row>strong{font-size:15px}.real-hour-row>span{font-size:16px}.real-shift-panel{padding:12px}}
+@media(max-width:750px){.real-shift-head{align-items:start;flex-direction:column}.real-current-machine{grid-template-columns:repeat(2,minmax(0,1fr))}.real-shift-kpis>div{padding:9px}.real-shift-kpis strong{font-size:30px}.real-shift-kpis small{font-size:9px}.real-hour-heading,.real-hour-row{grid-template-columns:82px minmax(0,1fr) 50px 68px;gap:6px}.real-hour-heading span:nth-child(4),.real-hour-row>span:nth-last-child(2){display:none}.real-hour-row>strong{font-size:15px}.real-hour-row>span{font-size:16px}.real-shift-panel{padding:12px}}
