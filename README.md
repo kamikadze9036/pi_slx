@@ -24,7 +24,7 @@ Both display views have previous/next shift navigation. The selected shift is ke
 `docker compose logs -f backend` shows startup and errors. `docker compose down` stops services without deleting configuration. To run tests in the backend image:
 
 ```bash
-docker compose run --rm backend pytest -q
+docker compose run --rm -e MES_PROVIDER=mock backend pytest -q
 ```
 
 The backend runs Alembic migrations before starting. A fresh database receives three shifts and Display ID `demo`. In Euromap63 mode, the display points to press `P2700-01`, and the 20-press catalog is configured without synthetic cycle settings. Existing customized display mappings are preserved. Mock mode remains available for local development.

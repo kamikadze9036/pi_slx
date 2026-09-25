@@ -34,7 +34,7 @@
 .real-timeline-stops{position:relative;height:29px;background:var(--real-track);overflow:hidden}
 .real-timeline-stops i{position:absolute;top:0;height:100%;background:#ee6a63;min-width:2px}
 .real-timeline-cycles{position:relative;height:74px;background:var(--real-track);overflow:hidden}
-.real-timeline-cycles i{position:absolute;bottom:0;width:1%;max-width:10px;background:#40bd96;min-width:2px}
+.real-timeline-cycles i{position:absolute;bottom:0;background:#40bd96;min-width:2px}
 .real-stop-list{max-height:250px;overflow:auto}.real-stop-list>div{display:grid;grid-template-columns:115px minmax(0,1fr) 76px;gap:12px;padding:7px 0;border-bottom:1px solid var(--real-border);font-size:12px}
 .real-stop-list>div:last-child{border-bottom:0}.real-stop-list span{color:var(--real-muted)}.real-stop-list strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.real-stop-list b{text-align:right;color:#ee8179}
 .theme-light .real-stop-list b{color:#bd2e3a}

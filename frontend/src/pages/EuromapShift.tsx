@@ -23,6 +23,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   const stale = offline || data.status === 'stale';
   const maxCycles = Math.max(1, ...live.hours.map(hour => hour.cycle_count || 0));
   const maxBin = Math.max(1, ...live.cycle_bins.map(bin => bin.count));
+  const binWidth = Math.max(0.25, live.bin_minutes / ((new Date(shift.end).getTime() - new Date(shift.start).getTime()) / 60000) * 85);
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
   const sourceNote = live.stop_source === 'cycles'
     ? 'Stop intervals inferred from gaps between recorded machine cycles. Shift boundaries may be incomplete.'
@@ -77,7 +78,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
         title={`${clock(event.start)}–${clock(event.end)} · ${event.reason} · ${minutes(event.seconds)}`} />)}</div>
       <div className="real-timeline-label">{counter ? 'COUNTER INCREASE / 15 MIN' : 'RECORDED CYCLES / 10 MIN'}</div>
       <div className="real-timeline-cycles" aria-label={counter ? 'Counter increase in sampled intervals' : 'Recorded cycles in ten-minute intervals'}>{live.cycle_bins.map(bin => <i key={bin.start}
-        style={{ left: `${position(bin.start, shift.start, shift.end)}%`, height: `${Math.max(2, bin.count / maxBin * 100)}%` }}
+        style={{ left: `${position(bin.start, shift.start, shift.end)}%`, width: `${binWidth}%`, height: `${Math.max(2, bin.count / maxBin * 100)}%` }}
         title={`${clock(bin.start)} · ${bin.count} ${counter ? 'counter increase' : 'cycles'}`} />)}</div>
       <p className="real-shift-help">Unmarked time is not confirmed running. Bars show {counter ? 'counter changes' : 'cycles'}, not good pieces.</p>
     </section>}
