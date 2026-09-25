@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
+import pytest
+
 from app.services import fleet
 
 
@@ -52,8 +54,9 @@ def test_fleet_keeps_machine_failures_isolated_and_maps_euromap_ids(monkeypatch)
     assert result["machines"][1]["kpi_state"] == "unconfigured"
 
 
-def test_live_fleet_does_not_publish_mock_shift_kpis(monkeypatch):
-    monkeypatch.setattr(fleet.settings, "mes_provider", "mock")
+@pytest.mark.parametrize("provider", ["mock", "euromap63"])
+def test_live_fleet_does_not_publish_mock_shift_kpis(monkeypatch, provider):
+    monkeypatch.setattr(fleet.settings, "mes_provider", provider)
     monkeypatch.setattr(fleet, "live_machine_rows", lambda: ([{
         "machine_code": "KM-MC5-01", "cyclades_mac_refmac": "P2700-01",
         "state": "bezi", "order_ref": "OF-123", "cycle_time_real_s": 49.2,

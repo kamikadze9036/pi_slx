@@ -12,6 +12,7 @@ from app.mes.demo_presses import DEMO_PRESSES
 from app.db.models import AppSetting, AuditLog, Display, Machine, Shift
 from app.db.session import SessionLocal, get_db
 from app.services.dashboard import build_dashboard
+from app.services.euromap_shift import build_euromap_shift
 from app.services.imprint import build_imprint
 from app.services.fleet import build_fleet
 from app.services.shifts import InvalidShiftSelection, active_shift
@@ -35,17 +36,23 @@ def seed_demo():
                            pieces_per_cycle=2, ideal_cycle_seconds=32.0, fleet_enabled=False))
         if not db.get(Display, "demo"):
             db.add(Display(id="demo", name="Assembly / Display 07", machine_id="demo-machine"))
-        if settings.mes_provider == "mock":
+        if settings.mes_provider in ("mock", "euromap63"):
             demo_machine = db.get(Machine, "demo-machine")
             demo_machine.fleet_enabled = False
             for machine_id, machine_name in DEMO_PRESSES:
                 if not db.get(Machine, machine_id):
                     db.add(Machine(id=machine_id, mes_id=machine_id,
                                    name=machine_name, fleet_enabled=True,
-                                   pieces_per_cycle=2, ideal_cycle_seconds=32.0))
+                                   pieces_per_cycle=2 if settings.mes_provider == "mock" else 1,
+                                   ideal_cycle_seconds=32.0 if settings.mes_provider == "mock" else None))
                 if not db.get(Display, machine_id):
                     db.add(Display(id=machine_id, name=f"{machine_id} display",
                                    machine_id=machine_id, theme="light"))
+        if settings.mes_provider == "euromap63":
+            demo_display = db.get(Display, "demo")
+            if demo_display and demo_display.machine_id == "demo-machine":
+                demo_display.machine_id = "P2700-01"
+                demo_display.name = "P2700-01 / Injection"
         for ident, name, begin, end in [("morning", "Morning", time(6), time(14)),
                                         ("afternoon", "Afternoon", time(14), time(22)),
                                         ("night", "Night", time(22), time(6))]:
@@ -107,8 +114,9 @@ def dashboard(display_id: str, shift_start: datetime | None = None, db: Session 
     if not machine.active:
         raise HTTPException(404, "Machine disabled")
     try:
-        return build_dashboard(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
-                               datetime.now(timezone.utc), dashboard_settings(db), shift_start)
+        builder = build_euromap_shift if settings.mes_provider == "euromap63" else build_dashboard
+        return builder(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
+                       datetime.now(timezone.utc), dashboard_settings(db), shift_start)
     except InvalidShiftSelection as exc:
         raise HTTPException(422, str(exc)) from exc
     except Exception:
@@ -135,8 +143,9 @@ def shift_imprint(display_id: str, shift_start: datetime | None = None, db: Sess
     if not machine.active:
         raise HTTPException(404, "Machine disabled")
     try:
-        return build_imprint(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
-                             datetime.now(timezone.utc), dashboard_settings(db), shift_start)
+        builder = build_euromap_shift if settings.mes_provider == "euromap63" else build_imprint
+        return builder(display, machine, list(db.scalars(select(Shift).where(Shift.active))),
+                       datetime.now(timezone.utc), dashboard_settings(db), shift_start)
     except InvalidShiftSelection as exc:
         raise HTTPException(422, str(exc)) from exc
     except Exception:

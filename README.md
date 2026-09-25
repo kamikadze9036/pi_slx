@@ -1,6 +1,6 @@
 # Production Efficiency Dashboard
 
-Shop-floor dashboard for live production losses, OEE, and shift output. The demo uses a dynamic mock MES provider. Ciclades SQL Server integration is isolated behind a provider and requires a site-approved query mapping.
+Shop-floor dashboard for production status and shift observations. The factory VM reads the existing Euromap63 Docker API; local development can still use a simulated MES provider. Direct Ciclades SQL integration is optional and requires a verified site query mapping.
 
 ## Quick start on Ubuntu
 
@@ -15,12 +15,11 @@ docker compose up -d --build
 For the factory VM (`spc-vm`), deploy the `codex/plant-overview` branch into
 `~/pi_slx` and run `bash deploy/spc-vm.sh`. The script creates a private `.env`
 on first run, exposes port `8088`, and joins the backend to the existing
-Euromap63 Docker network for live machine state. Shift KPI values remain
-simulated until the reviewed Ciclades mapping is enabled.
+Euromap63 Docker network for live machine state, recorded cycles, and observed stop intervals. The factory VM does not display simulated production counts.
 
 Open `http://SERVER/fleet` for the 20-press plant overview, `http://SERVER/display/demo` for the hourly production display, `http://SERVER/display/demo/imprint` for the chronological shift imprint, and `http://SERVER/admin` for configuration. Admin can select which machines appear in the plant overview and set each display's default dashboard type and dark or light theme. The explicit `/hourly` and `/imprint` URLs remain available for either view. Append `?theme=light` or `?theme=dark` to a display or fleet URL for a temporary visual comparison without changing the saved setting. `HTTP_PORT` in `.env` changes the exposed web port (the local Windows demo uses `8088`). The frontend proxies `/api` to the backend; PostgreSQL and the backend are not exposed on the host. Admin writes require the `ADMIN_API_KEY` entered on the admin page. Keep the app inside a trusted LAN until a site authentication and HTTPS proxy are installed.
 
-Both display views have previous/next shift navigation. The selected shift is kept when switching between hourly losses and the shift imprint. Hourly bars in both views can switch between minutes and pieces, and the choice is remembered across views: good and scrap are actual piece counts, while lost pieces are estimates based on ideal cycle time. Breaks appear only when the source provides them. The API accepts an offset-aware `shift_start` query parameter on both display data endpoints; omitting it selects the active or most recently completed scheduled shift. Mock history is simulated, not stored production history.
+Both display views have previous/next shift navigation. The selected shift is kept when switching between hourly records and the shift imprint. In Euromap63 mode they show recorded machine cycles and observed stop intervals. A cycle is not a good piece, and gaps or sampled state events do not provide complete OEE, scrap, or precise downtime at shift boundaries. Unavailable values are shown as such. The minutes/pieces toggle is available only for providers with verified piece totals. The API accepts an offset-aware `shift_start` query parameter; omitting it selects the active or most recently completed scheduled shift.
 
 `docker compose logs -f backend` shows startup and errors. `docker compose down` stops services without deleting configuration. To run tests in the backend image:
 
@@ -28,7 +27,7 @@ Both display views have previous/next shift navigation. The selected shift is ke
 docker compose run --rm backend pytest -q
 ```
 
-The backend runs Alembic migrations before starting. A fresh database receives a demo machine, three shifts, and Display ID `demo`. In mock mode it also receives 20 injection press IDs from the existing Euromap63 catalog; their readings and live states are **simulated**. The seed is idempotent and will not overwrite machine configuration edits.
+The backend runs Alembic migrations before starting. A fresh database receives three shifts and Display ID `demo`. In Euromap63 mode, the display points to press `P2700-01`, and the 20-press catalog is configured without synthetic cycle settings. Existing customized display mappings are preserved. Mock mode remains available for local development.
 The admin page also controls the dashboard refresh interval, visible summary KPI tiles, and the OEE warning threshold.
 
 ## How it works
@@ -38,8 +37,7 @@ The admin page also controls the dashboard refresh interval, visible summary KPI
 - `MockMesDataProvider` generates a repeatable, live shift profile. Counts in the current hour grow as time passes.
 - The KPI engine calculates good time, scrap-equivalent time, speed loss, micro stops, and downtime. The API provides precomputed bars and KPI values so the kiosk does little work.
 - The shift imprint shows a chronological machine-state track, hourly good/target/scrap output, stop reasons, and reported scrap reasons. Its event track is intentionally different from the category-aggregated bars on the hourly screen.
-- The plant overview combines shift KPIs calculated here with optional current press states from the existing Euromap63 `/api/machines/status` endpoint. It isolates failures per machine and distinguishes missing KPI data from a stopped press. See [docs/fleet-integration.md](docs/fleet-integration.md).
-- On a VM with `MES_PROVIDER=mock` and a live Euromap63 connection, the plant overview displays real state, order, cycle time, current-order worst-cavity scrap and collector health, and hides simulated shift KPIs. The hourly and imprint demo screens remain simulated.
+- In Euromap63 mode, the plant overview shows real state, order, cycle time, current-order worst-cavity scrap and collector health, without simulated shift KPIs. The shift views use `/api/cycles` and `/api/downtimes` from that same service. See [docs/fleet-integration.md](docs/fleet-integration.md).
 - MES snapshots are cached for five seconds per machine and shift. When the source fails, the last valid snapshot is returned as stale and the display shows a connection warning.
 - Admin settings reside in PostgreSQL; MES production history is not copied there.
 
@@ -49,7 +47,7 @@ The display uses one contiguous segment per loss category. Segments are aggregat
 
 | Variable | Purpose |
 | --- | --- |
-| `MES_PROVIDER` | `mock` or `ciclades` |
+| `MES_PROVIDER` | `euromap63` on the factory VM; `mock` for local demo or `ciclades` for a validated direct SQL mapping |
 | `SITE_TIMEZONE` | IANA timezone, default `Europe/Prague` |
 | `POLL_SECONDS` | Dashboard refresh period, default `10` |
 | `POSTGRES_*` | Configuration database credentials |

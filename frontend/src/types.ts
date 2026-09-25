@@ -10,7 +10,7 @@ export interface Hour {
 }
 export interface DashboardData {
   status: 'ok' | 'stale' | 'outside_shift'; server_time: string; refresh_seconds: number;
-  data_source?: 'mock' | 'ciclades';
+  data_source?: 'mock' | 'ciclades' | 'euromap63';
   last_successful_update?: string | null;
   display_settings?: DashboardSettings;
   display: { id: string; name: string; theme: 'dark' | 'light' };
@@ -24,6 +24,17 @@ export interface DashboardData {
     oee: number | null; status: string; warnings: string[];
     good_count: number; scrap_count: number; scrap_percent: number | null;
     downtime_seconds: number; speed_loss_seconds: number };
+  live_shift?: {
+    machine_code: string; detail_url: string | null;
+    stop_source: 'cycles' | 'histo_events' | null;
+    downtime_available: boolean; cycles_endpoint_available: boolean; cycles_available: boolean;
+    hours: { start: string; end: string; elapsed_seconds: number; cycle_count: number | null;
+      stop_seconds: number | null; stop_count: number | null }[];
+    cycle_bins: { start: string; count: number }[];
+    downtime_events: { start: string; end: string; seconds: number; reason: string }[];
+    summary: { recorded_cycles: number | null; observed_stop_seconds: number | null;
+      observed_stop_count: number | null };
+  };
 }
 export interface DashboardSettings { refresh_seconds: number; visible_kpis: string[]; oee_warning_threshold: number }
 export interface Machine { id: string; mes_id: string; name: string; active: boolean;

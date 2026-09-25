@@ -5,12 +5,16 @@ Ciclades SQL Server (read-only) / Mock MES
              ↓
       MesDataProvider
              ↓
- FastAPI shift + KPI services ── PostgreSQL configuration
+FastAPI shift + KPI services ── PostgreSQL configuration
              ↓
      frontend-ready API
              ↓
  React display / admin page in Nginx
 ```
+
+For the factory VM, `MES_PROVIDER=euromap63` bypasses the KPI provider and queries only the existing Euromap63 Docker API. The plant overview reads `/api/machines/status` and `/api/collectors/health`. Shift screens read `/api/machines` to map Cyclades IDs to Euromap machine codes, then bounded `/api/cycles` and `/api/downtimes` for the selected shift. The backend aggregates recorded cycles and observed stop intervals by hour. It does not turn cycles into good pieces or compute scrap, OEE, availability, performance, or quality without validated inputs. Euromap63 itself may obtain machine state and stop reasons from Cyclades; `pi_slx` has no direct SQL connection in this mode.
+
+When `/api/downtimes` uses cycle gaps, stop windows are inferred between recorded cycles and can be incomplete at shift boundaries. Its `histo_events` fallback is sampled Cyclades state and has approximate timestamps. Empty responses are shown as unavailable unless there is enough observed coverage to report zero. The original mock and direct SQL KPI calculation paths remain for development or a future validated mapping.
 
 The backend holds no session state. PostgreSQL stores machines, shift definitions, display mappings, heartbeats, and an audit log of admin edits. The five-second MES snapshot cache is process-local; deployment currently starts one Uvicorn worker. A multi-worker deployment would need a shared cache such as Redis to preserve query coalescing.
 

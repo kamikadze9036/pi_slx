@@ -3,6 +3,7 @@ import type { Hour, ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
 import { HourUnitToggle, useHourUnit } from '../HourUnit';
+import { EuromapShift } from './EuromapShift';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const fmt = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -68,7 +69,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
     let activeController: AbortController | null = null;
     async function refresh() {
       const controller = new AbortController(); activeController = controller;
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 25000);
       try {
         const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -91,6 +92,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
 
   if (!data) return <main className={`empty-state theme-${displayTheme()}`}><span className="eyebrow">SHIFT IMPRINT</span><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading shift…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
   if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><span className="eyebrow">SHIFT IMPRINT</span><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
+  if (data.data_source === 'euromap63') return <EuromapShift data={data} view="imprint" offline={offline} updatedAt={updatedAt} now={now} />;
   const shift = data.shift!;
   const production = data.production!;
   const summary = data.summary!;

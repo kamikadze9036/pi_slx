@@ -33,7 +33,7 @@ function MachineCard({ machine, liveOnly }: { machine: FleetMachine; liveOnly: b
       <div className="fleet-card-metrics fleet-live-metrics"><span title="Worst cavity reject rate for the current order, not this shift">WORST CAVITY · OF <strong>{machine.worst_cavity_scrap ? `${machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></span>
         <span>{machine.worst_cavity_scrap?.cavity_no != null ? `CAVITY ${machine.worst_cavity_scrap.cavity_no}` : ''}</span></div>
       <div className="fleet-card-foot"><span>{machine.collector_status === 'ok' ? `EUROMAP LIVE · LAST CYCLE ${age(machine.last_cycle_age_s)}`
-        : machine.collector_status === 'stale' ? 'EUROMAP COLLECTOR STALE' : 'CYCLADES LIVE STATE'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
+        : machine.collector_status === 'stale' ? 'EUROMAP COLLECTOR STALE' : 'EUROMAP63 STATE FEED'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
     </> : <>
       <div className="fleet-card-main"><div><small>SHIFT OEE</small><strong>{pct(machine.oee)}</strong></div>
         <div className="fleet-good"><small>GOOD / TARGET</small><strong>{fmt(machine.good_count)}<em> / {fmt(machine.target_good)}</em></strong></div></div>
@@ -83,7 +83,7 @@ export function Fleet() {
     : data.live_source === 'demo' ? 'DEMO / SIMULATED DATA'
     : data.live_source === 'unavailable' ? 'LIVE STATE CONNECTION LOST' : 'LIVE STATE NOT CONNECTED';
   const kpiSource = data.data_source === 'mock' ? 'SIMULATED SHIFT KPI' : 'CICLADES SHIFT KPI';
-  const liveOnly = data.data_source === 'mock' && data.live_source !== 'demo';
+  const liveOnly = data.data_source === 'euromap63' || (data.data_source === 'mock' && data.live_source !== 'demo');
   const coverage = data.machines.filter(machine => machine.oee != null && machine.kpi_state !== 'stale').length;
   return <main className={`screen fleet-screen theme-${theme}`}>
     <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
@@ -109,7 +109,7 @@ export function Fleet() {
       </>}
     </section>
     <div className="fleet-grid" aria-label="Machines">{data.machines.map(machine => <MachineCard key={machine.id} machine={machine} liveOnly={liveOnly} />)}</div>
-    <footer><span>{liveOnly ? 'SHIFT KPI DEMO ONLY IN DETAIL' : `SHIFT OEE LIMIT ${Math.round(data.oee_warning_threshold * 100)}%`} <span className="footer-sep">/</span> LIVE STATE: {source} <span className="footer-sep">/</span> {liveOnly ? 'CAVITY SCRAP = CURRENT ORDER' : kpiSource}</span>
+    <footer><span>{data.data_source === 'euromap63' ? 'SHIFT VIEWS: RECORDED CYCLES / STOPS' : liveOnly ? 'SHIFT KPI DEMO ONLY IN DETAIL' : `SHIFT OEE LIMIT ${Math.round(data.oee_warning_threshold * 100)}%`} <span className="footer-sep">/</span> LIVE STATE: {source} <span className="footer-sep">/</span> {liveOnly ? 'CAVITY SCRAP = CURRENT ORDER' : kpiSource}</span>
       <span>SHOWN BY MACHINE NUMBER · SELECT A PRESS FOR DETAILS</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>
   </main>;
 }

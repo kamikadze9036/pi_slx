@@ -101,7 +101,7 @@ def _card(machine, display, shifts, now, display_settings, skip_kpis=False):
 def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[Shift],
                 now: datetime, display_settings: dict, excluded_mes_ids: set[str] | None = None):
     live_rows, live_source = live_machine_rows()
-    live_only = settings.mes_provider == "mock" and live_source != "demo"
+    live_only = settings.mes_provider == "euromap63" or (settings.mes_provider == "mock" and live_source != "demo")
     health_rows = collector_health_rows() if live_source == "euromap63" else []
     health_by_code = {str(row["machine_code"]): row for row in health_rows if row.get("machine_code")}
     live_by_mes = {str(row.get("cyclades_mac_refmac") or row.get("machine_code")): row

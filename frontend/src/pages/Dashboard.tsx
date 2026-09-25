@@ -3,6 +3,7 @@ import type { DashboardData, Hour } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
 import { HourUnitToggle, useHourUnit, type HourUnit } from '../HourUnit';
+import { EuromapShift } from './EuromapShift';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
@@ -74,7 +75,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
     async function refresh() {
       const controller = new AbortController();
       activeController = controller;
-      const timeout = setTimeout(() => controller.abort(), 6000);
+      const timeout = setTimeout(() => controller.abort(), 25000);
       try {
         const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -101,6 +102,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
   const stale = offline || data?.status === 'stale';
   if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading display…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
   if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
+  if (data.data_source === 'euromap63') return <EuromapShift data={data} view="hourly" offline={offline} updatedAt={updatedAt} now={now} />;
   const production = data.production!;
   const summary = data.summary!;
   const displaySettings = data.display_settings;

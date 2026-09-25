@@ -12,6 +12,7 @@ import './admin-settings.css';
 import './light.css';
 import './fleet.css';
 import './shift-navigation.css';
+import './euromap-shift.css';
 
 const path = window.location.pathname;
 const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly))?/);
