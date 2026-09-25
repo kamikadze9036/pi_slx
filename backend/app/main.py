@@ -35,7 +35,8 @@ def seed_demo():
             db.add(Machine(id="demo-machine", mes_id="demo-machine", name="LINE 07 / Assembly",
                            pieces_per_cycle=2, ideal_cycle_seconds=32.0, fleet_enabled=False))
         if not db.get(Display, "demo"):
-            db.add(Display(id="demo", name="Assembly / Display 07", machine_id="demo-machine"))
+            db.add(Display(id="demo", name="Assembly / Display 07", machine_id="demo-machine",
+                           theme="light" if settings.mes_provider == "euromap63" else "dark"))
         if settings.mes_provider in ("mock", "euromap63"):
             demo_machine = db.get(Machine, "demo-machine")
             demo_machine.fleet_enabled = False

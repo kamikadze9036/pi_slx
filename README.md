@@ -27,7 +27,7 @@ Both display views have previous/next shift navigation. The selected shift is ke
 docker compose run --rm -e MES_PROVIDER=mock backend pytest -q
 ```
 
-The backend runs Alembic migrations before starting. A fresh database receives three shifts and Display ID `demo`. In Euromap63 mode, the display points to press `P2700-01`, and the 20-press catalog is configured without synthetic cycle settings. Existing customized display mappings are preserved. Mock mode remains available for local development.
+The backend runs Alembic migrations before starting. A fresh database receives three shifts and Display ID `demo`. In Euromap63 mode, the display points to press `P2700-01` with the light theme, and the 20-press catalog is configured without synthetic cycle settings. Existing customized display mappings are preserved. Mock mode remains available for local development.
 The admin page also controls the dashboard refresh interval, visible summary KPI tiles, and the OEE warning threshold.
 
 ## How it works
