@@ -32,8 +32,8 @@ function MachineCard({ machine, liveOnly }: { machine: FleetMachine; liveOnly: b
         <div className="fleet-good"><small>PLAN</small><strong>{cycle(machine.cycle_time_planned_s)}</strong></div></div>
       <div className="fleet-card-metrics fleet-live-metrics"><span title="Worst cavity reject rate for the current order, not this shift">WORST CAVITY · OF <strong>{machine.worst_cavity_scrap ? `${machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></span>
         <span>{machine.worst_cavity_scrap?.cavity_no != null ? `CAVITY ${machine.worst_cavity_scrap.cavity_no}` : ''}</span></div>
-      <div className="fleet-card-foot"><span>{machine.collector_status === 'ok' ? `EUROMAP LIVE · LAST CYCLE ${age(machine.last_cycle_age_s)}`
-        : machine.collector_status === 'stale' ? 'EUROMAP COLLECTOR STALE' : 'EUROMAP63 STATE FEED'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
+      <div className="fleet-card-foot"><span>{machine.collector_status === 'ok' ? `E63 COLLECTOR OK · CYCLE ${age(machine.last_cycle_age_s)}`
+        : machine.collector_status === 'stale' ? 'E63 COLLECTOR STALE' : 'EUROMAP63 STATE FEED'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
     </> : <>
       <div className="fleet-card-main"><div><small>SHIFT OEE</small><strong>{pct(machine.oee)}</strong></div>
         <div className="fleet-good"><small>GOOD / TARGET</small><strong>{fmt(machine.good_count)}<em> / {fmt(machine.target_good)}</em></strong></div></div>
@@ -77,7 +77,7 @@ export function Fleet() {
   const theme = displayTheme('light');
   if (!data) return <main className={`empty-state theme-${theme}`}><span className="eyebrow">PLANT OVERVIEW</span>
     <h1>{offline ? 'DATA CONNECTION LOST' : 'Loading machines…'}</h1>
-    <p>{offline ? 'Reconnecting automatically' : 'Shift performance and live state'}</p></main>;
+    <p>{offline ? 'Reconnecting automatically' : 'Machine state and recorded shift activity'}</p></main>;
 
   const source = data.live_source === 'euromap63' ? 'EUROMAP63 LIVE STATE'
     : data.live_source === 'demo' ? 'DEMO / SIMULATED DATA'
