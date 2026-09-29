@@ -41,7 +41,10 @@ def seed_demo():
             demo_machine = db.get(Machine, "demo-machine")
             demo_machine.fleet_enabled = False
             for machine_id, machine_name in DEMO_PRESSES:
-                if not db.get(Machine, machine_id):
+                existing = db.get(Machine, machine_id)
+                if existing and existing.name == "Krauss Maffei MC5":
+                    existing.name = machine_name
+                if not existing:
                     db.add(Machine(id=machine_id, mes_id=machine_id,
                                    name=machine_name, fleet_enabled=True,
                                    pieces_per_cycle=2 if settings.mes_provider == "mock" else 1,

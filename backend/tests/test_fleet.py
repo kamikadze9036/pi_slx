@@ -8,11 +8,11 @@ from app.services import fleet
 
 def test_fleet_keeps_machine_failures_isolated_and_maps_euromap_ids(monkeypatch):
     monkeypatch.setattr(fleet.settings, "mes_provider", "ciclades")
-    machines = [SimpleNamespace(id="P2700-01", mes_id="P2700-01", name="Krauss Maffei MC5"),
+    machines = [SimpleNamespace(id="P2700-01", mes_id="P2700-01", name="P2700"),
                 SimpleNamespace(id="P220-002", mes_id="P220-002", name="Presse 220 T")]
     displays = [SimpleNamespace(id="press-display", machine_id="P2700-01")]
     rows = [{"machine_code": "KM-MC5-01", "cyclades_mac_refmac": "P2700-01",
-             "state": "bez_zakazky", "order_ref": None, "machine_name": "KM MC5",
+             "state": "bez_zakazky", "order_ref": None, "machine_name": "P2700",
              "cycle_time_real_s": 49.2,
              "worst_cavity_scrap": {"cavity_no": 2, "reject_pct": 9.6, "target_pct": 5.0}},
             {"machine_code": "P220-002", "cyclades_mac_refmac": "P220-002", "state": "stoji",

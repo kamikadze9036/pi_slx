@@ -10,7 +10,7 @@ PRAGUE = ZoneInfo("Europe/Prague")
 SHIFT = SimpleNamespace(id="morning", name="Morning", start_time=time(6), end_time=time(14),
                         days=list(range(7)), active=True)
 DISPLAY = SimpleNamespace(id="P2700-01", name="Press display", theme="light")
-MACHINE = SimpleNamespace(id="P2700-01", mes_id="P2700-01", name="Krauss Maffei MC5")
+MACHINE = SimpleNamespace(id="P2700-01", mes_id="P2700-01", name="P2700")
 
 
 def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monkeypatch):

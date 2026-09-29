@@ -23,5 +23,5 @@ DEMO_PRESSES = [
     ("P1800-04", "Haitian 1800"),
     ("P2300-03", "Presse Engel 2300T"),
     ("P2300-10", "Presse 2300T"),
-    ("P2700-01", "Krauss Maffei MC5"),
+    ("P2700-01", "P2700"),
 ]
