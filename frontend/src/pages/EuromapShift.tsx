@@ -70,34 +70,36 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       : 'Stop history is unavailable from Euromap63.';
 
   return <main className={`screen real-shift-screen theme-${displayTheme(data.display.theme)}`}>
+    <div className="real-sticky">
     <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'EUROMAP63 CONNECTION LOST' : 'EUROMAP63 · RECORDED DATA'}</div>
-      <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span>
-        <strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div></header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a>
+      <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a>
       {view === 'hourly' ? <span className="selected">HOURLY RECORDS</span>
         : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly`)}>HOURLY RECORDS ↗</a>}
       {view === 'imprint' ? <span className="selected">SHIFT IMPRINT</span>
         : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/imprint`)}>SHIFT IMPRINT ↗</a>}</nav>
+      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'EUROMAP63 CONNECTION LOST' : 'EUROMAP63 · RECORDED DATA'}</div>
+      <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span>
+        <strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div></header>
     {stale && <div className="stale-banner">Showing last available Euromap63 data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
     <ShiftNavigator displayId={data.display.id} view={view} shift={shift} navigation={data.shift_navigation!} />
-    <section className="real-shift-head"><div><span className="eyebrow">{view === 'hourly' ? 'HOURLY RECORDS' : 'SHIFT IMPRINT'} / {data.machine.id.toUpperCase()}</span>
-      <h1>{data.machine.name}</h1><p>{live.machine_code} · {shift.name} · {clock(shift.start)}–{clock(shift.end)}</p></div>
+    <section className="real-summary"><div className="real-title"><div><span className="eyebrow">{view === 'hourly' ? 'HOURLY RECORDS' : 'SHIFT IMPRINT'} / {data.machine.id.toUpperCase()}</span>
+      <h1>{data.machine.name}</h1><p>{live.machine_code} · {shift.name} · {clock(shift.start)}–{clock(shift.end)}</p></div></div>
+    <section className="real-shift-kpis" aria-label="Recorded shift values">
+      <div><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'}</span><strong>{number(summary.cycle_count)}</strong><small>{counter ? '15-minute sampled cycle counter' : 'Machine cycles, not good pieces'}</small></div>
+      <div><span>OBSERVED STOPS</span><strong>{number(summary.observed_stop_count)}</strong><small>{live.stop_source === 'histo_events' ? 'Approximate timestamps' : 'Cycle-gap detection'}</small></div>
+      <div><span>OBSERVED STOP TIME</span><strong>{minutes(summary.observed_stop_seconds)}</strong><small>Partial coverage possible</small></div>
+    </section>
       <div className="real-head-actions">
         {canSplit && <div className="real-scrap-toggle" role="group" aria-label="Scrap display"><button type="button" aria-pressed={!splitView} onClick={() => chooseView(false)}>TOTAL</button>
           <button type="button" aria-pressed={splitView} onClick={() => chooseView(true)}>BY CAVITY</button></div>}
         {live.detail_url && <a href={live.detail_url}>EUROMAP63 MACHINE DETAIL ↗</a>}</div></section>
+    </div>
     {live.current_machine && <section className="real-current-machine" aria-label="Current machine state">
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
       <div><span>CURRENT ORDER</span><strong>{live.current_machine.order_ref || '—'}</strong></div>
       <div><span>ACTUAL / PLANNED CYCLE</span><strong>{seconds(live.current_machine.cycle_time_real_s)} / {seconds(live.current_machine.cycle_time_planned_s)}</strong></div>
       <div><span>WORST CAVITY · CURRENT ORDER</span><strong>{live.current_machine.worst_cavity_scrap?.reject_pct != null ? `${live.current_machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></div>
     </section>}
-    <section className="real-shift-kpis" aria-label="Recorded shift values">
-      <div><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'}</span><strong>{number(summary.cycle_count)}</strong><small>{counter ? '15-minute sampled cycle counter' : 'Machine cycles, not good pieces'}</small></div>
-      <div><span>OBSERVED STOPS</span><strong>{number(summary.observed_stop_count)}</strong><small>{live.stop_source === 'histo_events' ? 'Approximate timestamps' : 'Cycle-gap detection'}</small></div>
-      <div><span>OBSERVED STOP TIME</span><strong>{minutes(summary.observed_stop_seconds)}</strong><small>Partial coverage possible</small></div>
-    </section>
     <div className="real-shift-note">{counter ? 'Cycle counts come from changes in a sampled machine counter; missing intervals and counter resets are excluded. ' : ''}{sourceNote} Good pieces, shift scrap and OEE are unavailable until a verified production source is connected.</div>
     {!hasObservedData && <div className="real-shift-empty">No cycle or stop records are available for this shift. No production quantity is inferred.</div>}
     {view === 'hourly' ? <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">01 / HOURLY VIEW</span><h2>Recorded activity by hour</h2></div>

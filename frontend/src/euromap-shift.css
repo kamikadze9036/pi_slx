@@ -87,3 +87,31 @@
 .real-scrap-matrix>b{text-align:right;font-family:'Barlow Condensed',sans-serif;font-size:19px;color:#d9922b}
 .real-scrap-list.by-cavity>div{grid-template-columns:56px 40px minmax(0,1fr) 76px}
 @media(max-width:750px){.real-head-actions{align-items:start}.real-scrap-matrix{column-gap:4px}}
+.real-shift-screen .real-sticky{position:sticky;top:0;z-index:30;background:#07141b;padding-bottom:6px;box-shadow:0 6px 10px -8px rgba(0,0,0,.55)}
+.real-shift-screen.theme-light .real-sticky{background:#f2f5f3;box-shadow:0 6px 10px -8px rgba(20,40,43,.3)}
+.real-sticky .topbar{height:42px;gap:22px}
+.real-sticky .brand{font-size:8px;gap:9px;line-height:1.35}
+.real-sticky .brand-mark{width:28px;height:28px;font-size:12px;border-width:2px}
+.real-sticky .view-nav{position:static;padding:0;margin-right:auto;gap:16px;font-size:9px}
+.real-sticky .view-nav .selected{padding-bottom:3px}
+.real-sticky .top-status{margin:0;font-size:9px}
+.real-sticky .top-time{gap:10px;font-size:10px}
+.real-sticky .top-time strong{font-size:24px}
+.real-sticky .stale-banner{padding:4px 12px;font-size:11px}
+.real-sticky .shift-navigator{min-height:0;padding:3px 12px;gap:16px;font-size:10px;margin-top:6px}
+.real-sticky .shift-nav-selected strong{font-size:12px}
+.real-summary{display:flex;align-items:stretch;gap:12px;padding-top:6px}
+.real-summary .real-title{display:flex;flex-direction:column;justify-content:center;min-width:0;flex:none}
+.real-summary .eyebrow{display:none}
+.real-summary h1{font-family:'Barlow Condensed',sans-serif;font-size:32px;line-height:1;margin:0;text-transform:uppercase}
+.real-summary .real-title p{margin:2px 0 0;color:var(--real-muted);font-size:11px;white-space:nowrap}
+.real-summary .real-shift-kpis{flex:1;display:flex;align-items:stretch;border-top-width:2px;min-width:0}
+.real-summary .real-shift-kpis>div{flex:1;flex-direction:column;justify-content:center;padding:3px 14px;gap:0;min-width:0}
+.real-summary .real-shift-kpis span{font-size:9px}
+.real-summary .real-shift-kpis strong{font-size:26px;line-height:1.05}
+.real-summary .real-shift-kpis small{display:none}
+.real-summary .real-head-actions{flex:none;justify-content:center;gap:6px}
+.real-summary .real-head-actions a{font-size:10px}
+.real-summary .real-scrap-toggle button{padding:5px 12px;font-size:10px}
+.real-shift-screen .real-shift-note{margin-top:8px}
+@media(max-width:900px){.real-shift-screen .real-sticky{position:static;box-shadow:none}.real-summary{flex-wrap:wrap}.real-summary .real-shift-kpis{flex-basis:100%;order:3}.real-sticky .topbar{flex-wrap:wrap;height:auto;padding:6px 0}}
