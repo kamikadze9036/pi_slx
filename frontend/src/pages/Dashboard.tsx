@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { DashboardData, Hour } from '../types';
 import { displayTheme, themeQuery } from '../theme';
-import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
+import { ShiftNavigator, displayLink, shiftApiQuery, useShiftStart } from '../ShiftNavigator';
 import { HourUnitToggle, useHourUnit, type HourUnit } from '../HourUnit';
 import { EuromapShift } from './EuromapShift';
 
@@ -61,6 +61,7 @@ function Kpi({ label, value, note, accent }: { label: string; value: string; not
 }
 
 export function Dashboard({ displayId }: { displayId: string }) {
+  const shiftStart = useShiftStart();
   const [data, setData] = useState<DashboardData | null>(null);
   const [offline, setOffline] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -77,7 +78,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
       activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 25000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery}`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next: DashboardData = await response.json();
         if (mounted) { setData(next); setOffline(false); setUpdatedAt(next.status === 'stale' && next.last_successful_update ? new Date(next.last_successful_update) : new Date()); interval = next.refresh_seconds; }
@@ -97,7 +98,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
     heartbeat();
     const beatTimer = setInterval(heartbeat, 15000);
     return () => { mounted = false; activeController?.abort(); clearTimeout(timer); clearInterval(clockTimer); clearInterval(beatTimer); };
-  }, [displayId]);
+  }, [displayId, shiftStart]);
 
   const stale = offline || data?.status === 'stale';
   if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading display…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;

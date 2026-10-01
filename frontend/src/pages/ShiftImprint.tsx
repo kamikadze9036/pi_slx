@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Hour, ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
-import { ShiftNavigator, displayLink, shiftApiQuery } from '../ShiftNavigator';
+import { ShiftNavigator, displayLink, shiftApiQuery, useShiftStart } from '../ShiftNavigator';
 import { HourUnitToggle, useHourUnit } from '../HourUnit';
 import { EuromapShift } from './EuromapShift';
 
@@ -57,6 +57,7 @@ function HourBreakdownRow({ hour, unit }: { hour: Hour; unit: 'minutes' | 'piece
 }
 
 export function ShiftImprint({ displayId }: { displayId: string }) {
+  const shiftStart = useShiftStart();
   const [data, setData] = useState<ImprintData | null>(null);
   const [offline, setOffline] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -71,7 +72,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       const controller = new AbortController(); activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 25000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery}`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const next: ImprintData = await response.json();
         if (mounted) { setData(next); setOffline(false); interval = next.refresh_seconds;
@@ -88,7 +89,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
     }).catch(() => undefined);
     heartbeat(); const beatTimer = setInterval(heartbeat, 15000);
     return () => { mounted = false; activeController?.abort(); clearTimeout(timer); clearInterval(clockTimer); clearInterval(beatTimer); };
-  }, [displayId]);
+  }, [displayId, shiftStart]);
 
   if (!data) return <main className={`empty-state theme-${displayTheme()}`}><span className="eyebrow">SHIFT IMPRINT</span><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading shift…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
   if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><span className="eyebrow">SHIFT IMPRINT</span><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
