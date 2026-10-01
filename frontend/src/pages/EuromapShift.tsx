@@ -24,7 +24,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   const maxCycles = Math.max(1, ...live.hours.map(hour => hour.cycle_count || 0));
   const maxBin = Math.max(1, ...live.cycle_bins.map(bin => bin.count));
   const binWidth = Math.max(0.25, live.bin_minutes / ((new Date(shift.end).getTime() - new Date(shift.start).getTime()) / 60000) * 85);
-  const scrapList = live.scrap_declarations;
+  const scrapList = live.scrap_declarations ?? null;
   const scrapTotal = scrapList?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
   const scrapBinMs = live.bin_minutes * 60000;
   const scrapBins = new Map<number, number>();
