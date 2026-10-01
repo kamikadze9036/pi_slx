@@ -1,3 +1,4 @@
+import { Fragment, useState } from 'react';
 import type { DashboardData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
@@ -39,6 +40,28 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     row.quantity += item.quantity; row.declarations += 1; return map.set(item.reason, row);
   }, new Map<string, { reason: string; quantity: number; declarations: number }>()).values()]
     .sort((a, b) => b.quantity - a.quantity);
+  const cavityRows = live.cavities?.rows ?? [];
+  const canSplit = view === 'imprint' && scrapList != null && cavityRows.length > 1;
+  const [splitPref, setSplitPref] = useState(() => { try { return localStorage.getItem('shift-scrap-view') === 'split'; } catch { return false; } });
+  const splitView = canSplit && splitPref;
+  const chooseView = (split: boolean) => { setSplitPref(split); try { localStorage.setItem('shift-scrap-view', split ? 'split' : 'sum'); } catch { /* storage unavailable */ } };
+  const lanes: (number | null)[] = [...cavityRows.map(row => row.cavity_no), ...(scrapList?.some(item => item.cavity_no == null) ? [null] : [])];
+  const laneName = (no: number | null) => no == null ? '?' : `K${no}`;
+  const laneData = lanes.map(no => {
+    const bins = new Map<number, number>();
+    for (const item of scrapList || []) if ((item.cavity_no ?? null) === no) {
+      const slot = Math.floor((new Date(item.time).getTime() - new Date(shift.start).getTime()) / scrapBinMs);
+      bins.set(slot, (bins.get(slot) || 0) + item.quantity);
+    }
+    return { no, bins };
+  });
+  const maxLaneBin = Math.max(1, ...laneData.flatMap(lane => [...lane.bins.values()]));
+  const laneQty = (no: number | null, reason?: string) => (scrapList || [])
+    .filter(item => (item.cavity_no ?? null) === no && (reason === undefined || item.reason === reason))
+    .reduce((sum, item) => sum + item.quantity, 0);
+  let worstCavity: number | null = null, worstPct = -1;
+  for (const row of cavityRows) if (row.reject_pct != null && row.reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.reject_pct; }
+  const reasonRows = scrapByReason.map(row => ({ ...row, byLane: lanes.map(no => laneQty(no, row.reason)) }));
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
   const sourceNote = live.stop_source === 'cycles'
     ? 'Stop intervals inferred from gaps between recorded machine cycles. Shift boundaries may be incomplete.'
@@ -60,7 +83,10 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     <ShiftNavigator displayId={data.display.id} view={view} shift={shift} navigation={data.shift_navigation!} />
     <section className="real-shift-head"><div><span className="eyebrow">{view === 'hourly' ? 'HOURLY RECORDS' : 'SHIFT IMPRINT'} / {data.machine.id.toUpperCase()}</span>
       <h1>{data.machine.name}</h1><p>{live.machine_code} · {shift.name} · {clock(shift.start)}–{clock(shift.end)}</p></div>
-      {live.detail_url && <a href={live.detail_url}>EUROMAP63 MACHINE DETAIL ↗</a>}</section>
+      <div className="real-head-actions">
+        {canSplit && <div className="real-scrap-toggle" role="group" aria-label="Scrap display"><button type="button" aria-pressed={!splitView} onClick={() => chooseView(false)}>TOTAL</button>
+          <button type="button" aria-pressed={splitView} onClick={() => chooseView(true)}>BY CAVITY</button></div>}
+        {live.detail_url && <a href={live.detail_url}>EUROMAP63 MACHINE DETAIL ↗</a>}</div></section>
     {live.current_machine && <section className="real-current-machine" aria-label="Current machine state">
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
       <div><span>CURRENT ORDER</span><strong>{live.current_machine.order_ref || '—'}</strong></div>
@@ -95,23 +121,50 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <div className="real-timeline-cycles" aria-label={counter ? 'Counter increase in sampled intervals' : 'Recorded cycles in ten-minute intervals'}>{live.cycle_bins.map(bin => <i key={bin.start}
         style={{ left: `${position(bin.start, shift.start, shift.end)}%`, width: `${binWidth}%`, height: `${Math.max(2, bin.count / maxBin * 100)}%` }}
         title={`${clock(bin.start)} · ${bin.count} ${counter ? 'counter increase' : 'cycles'}`} />)}</div>
-      {scrapList && <><div className="real-timeline-label">DECLARED SCRAP / {live.bin_minutes} MIN</div>
+      {scrapList && !splitView && <><div className="real-timeline-label">DECLARED SCRAP / {live.bin_minutes} MIN</div>
         <div className="real-timeline-scrap" aria-label="Declared scrap in time intervals">{[...scrapBins].map(([slot, quantity]) => <i key={slot}
           style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(8, quantity / maxScrapBin * 100)}%` }}
           title={`${clock(new Date(new Date(shift.start).getTime() + slot * scrapBinMs).toISOString())} · ${number(quantity)} pcs declared`} />)}</div></>}
+      {scrapList && splitView && <><div className="real-timeline-label">DECLARED SCRAP BY CAVITY / {live.bin_minutes} MIN</div>
+        <div className="real-scrap-lanes">{laneData.map(lane => <div key={lane.no ?? 'unknown'} className="real-scrap-lane">
+          <span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span>
+          <div className="real-timeline-scrap lane" aria-label={`Declared scrap, cavity ${laneName(lane.no)}`}>{[...lane.bins].map(([slot, quantity]) => <i key={slot}
+            style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(14, quantity / maxLaneBin * 100)}%` }}
+            title={`${laneName(lane.no)} · ${clock(new Date(new Date(shift.start).getTime() + slot * scrapBinMs).toISOString())} · ${number(quantity)} pcs declared`} />)}</div></div>)}</div></>}
       <p className="real-shift-help">Unmarked time is not confirmed running. Bars show {counter ? 'counter changes' : 'cycles'}, not good pieces.{scrapList ? ' Scrap bars show pieces declared by the operator in that interval, not when the scrap was produced.' : ''}</p>
     </section>}
     <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">02 / STOP DETAIL</span><h2>Recorded stop reasons</h2></div>
       {live.downtime_events.length ? <div className="real-stop-list">{live.downtime_events.map((event, index) => <div key={`${event.start}-${index}`}>
         <span>{clock(event.start)}–{clock(event.end)}</span><strong>{event.reason}</strong><b>{minutes(event.seconds)}</b></div>)}</div>
         : <p className="real-shift-help">No stop intervals returned for this shift. This does not confirm uninterrupted production.</p>}</section>
-    {view === 'imprint' && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / SCRAP DECLARATIONS</span><h2>Declared scrap{scrapList ? ` · ${number(scrapTotal)} pcs` : ''}</h2></div>
+    {splitView && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / CAVITIES</span><h2>Scrap by cavity{live.cavities?.order_ref ? ` · ${live.cavities.order_ref}` : ''}</h2></div>
+      <div className="real-cav-table"><div className="real-cav-row head"><span>CAV.</span><span>PART</span><span>THIS SHIFT</span><span>SHARE</span><span>ORDER SCRAP RATE</span></div>
+        {lanes.map(no => { const row = cavityRows.find(r => r.cavity_no === no); const qty = laneQty(no);
+          const share = scrapTotal > 0 ? qty / scrapTotal * 100 : 0; const over = row?.reject_pct != null && row.target_pct != null && row.reject_pct > row.target_pct;
+          return <div className="real-cav-row" key={no ?? 'unknown'}>
+            <span className={`real-cav-tag ${no === worstCavity ? 'worst' : ''}`}>{laneName(no)}</span>
+            <span className="real-cav-part">{row ? <>{row.label || row.product}<small>{row.product}</small></> : <>Unassigned<small>Other order or unknown product</small></>}</span>
+            <b>{number(qty)} pcs</b>
+            <span className="real-cav-bar"><span className="real-bar"><i style={{ width: `${share}%` }} /></span><em>{share.toFixed(0)}%</em></span>
+            <span className="real-cav-bar">{row?.reject_pct != null ? <><span className="real-bar"><i className={over ? 'over' : ''} style={{ width: `${Math.min(100, row.reject_pct / 20 * 100)}%` }} />
+              {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''}>{row.reject_pct.toFixed(1)}%</em></> : <em>—</em>}</span>
+          </div>; })}</div>
+      <p className="real-shift-help">Order scrap rate = scrap / (good + scrap) for the whole order as kept by Cyclades; the marker is the target. Good pieces per cavity are not available per shift.</p>
+    </section>}
+    {view === 'imprint' && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">{splitView ? '04' : '03'} / SCRAP DECLARATIONS</span><h2>Declared scrap{scrapList ? ` · ${number(scrapTotal)} pcs` : ''}</h2></div>
       {scrapList === null ? <p className="real-shift-help">Scrap declarations are unavailable from Euromap63.</p>
         : scrapList.length === 0 ? <p className="real-shift-help">No scrap was declared in this shift.</p> : <>
-        <div className="real-scrap-reasons">{scrapByReason.map(row => <div key={row.reason}>
-          <strong>{row.reason}</strong><span>{row.declarations}× declared</span><b>{number(row.quantity)} pcs</b></div>)}</div>
-        <div className="real-scrap-list" aria-label="Individual scrap declarations">{scrapList.map((item, index) => <div key={`${item.time}-${index}`}>
-          <span>{clock(item.time)}</span><strong>{item.reason}</strong><em>{item.product || ''}</em><b>{number(item.quantity)} pcs</b></div>)}</div></>}
+        {splitView ? <div className="real-scrap-matrix" style={{ gridTemplateColumns: `minmax(0,1fr) repeat(${lanes.length}, 52px) 70px` }}>
+          <span className="h">REASON</span>{lanes.map(no => <span className="h" key={no ?? 'unknown'}>{laneName(no)}</span>)}<span className="h">TOTAL</span>
+          {reasonRows.map(row => { const top = Math.max(...row.byLane); return <Fragment key={row.reason}>
+            <strong>{row.reason}</strong>
+            {row.byLane.map((qty, index) => <span key={index} className={qty && qty === top ? 'hot' : ''}>{qty || '·'}</span>)}
+            <b>{number(row.quantity)}</b></Fragment>; })}</div>
+        : <div className="real-scrap-reasons">{scrapByReason.map(row => <div key={row.reason}>
+          <strong>{row.reason}</strong><span>{row.declarations}× declared</span><b>{number(row.quantity)} pcs</b></div>)}</div>}
+        <div className={`real-scrap-list ${splitView ? 'by-cavity' : ''}`} aria-label="Individual scrap declarations">{scrapList.map((item, index) => <div key={`${item.time}-${index}`}>
+          <span>{clock(item.time)}</span>{splitView && <span className={`real-cav-tag ${item.cavity_no === worstCavity ? 'worst' : ''}`}>{laneName(item.cavity_no ?? null)}</span>}
+          <strong>{item.reason}</strong>{!splitView && <em>{item.product || ''}</em>}<b>{number(item.quantity)} pcs</b></div>)}</div></>}
     </section>}
     <footer><span>{data.display.name.toUpperCase()} / {shift.name.toUpperCase()}</span>
       <span>EUROMAP63 API · NO SIMULATED PRODUCTION DATA</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>

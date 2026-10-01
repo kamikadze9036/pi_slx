@@ -37,7 +37,9 @@ export interface DashboardData {
       stop_seconds: number | null; stop_count: number | null }[];
     cycle_bins: { start: string; count: number }[];
     downtime_events: { start: string; end: string; seconds: number; reason: string }[];
-    scrap_declarations: { time: string; quantity: number; reason: string; product: string | null }[] | null;
+    scrap_declarations: { time: string; quantity: number; reason: string; product: string | null; cavity_no: number | null }[] | null;
+    cavities?: { order_ref: string | null; rows: { cavity_no: number; product: string; label: string | null;
+      qty_good: number | null; qty_reject: number | null; reject_pct: number | null; target_pct: number | null }[] };
     summary: { cycle_count: number | null; observed_stop_seconds: number | null;
       observed_stop_count: number | null };
   };

@@ -38,7 +38,7 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
             raise ValueError(f"Machine {machine_id} is not in Euromap63")
         code = str(machine["machine_code"])
         params = {"machine": code, "since": start.isoformat(), "until": end.isoformat()}
-        downtime = cycles = derived = current_status = scrap = None
+        downtime = cycles = derived = current_status = scrap = cavities = None
         try:
             response = client.get("/api/downtimes", params=params)
             response.raise_for_status()
@@ -89,9 +89,19 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
         except (httpx.HTTPError, ValueError):
             log.exception("Euromap63 scrap declarations unavailable machine=%s", code)
             scrap = None
+        if scrap is not None:
+            try:
+                response = client.get("/api/machines/cavity-scrap", params={"machine": code})
+                response.raise_for_status()
+                cavities = response.json()
+                if not isinstance(cavities, dict) or not isinstance(cavities.get("cavities"), list):
+                    raise ValueError("Invalid Euromap63 cavity scrap response")
+            except (httpx.HTTPError, ValueError):
+                log.exception("Euromap63 cavity scrap unavailable machine=%s", code)
+                cavities = None
         if downtime is None and cycles is None and derived is None and current_status is None:
             raise ValueError(f"No Euromap63 shift data available for {code}")
-        return code, downtime, cycles, derived, current_status, scrap
+        return code, downtime, cycles, derived, current_status, scrap, cavities
 
 
 def build_euromap_shift(display, machine, shifts, now: datetime,
@@ -107,7 +117,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     current = start.astimezone(timezone.utc) <= now_utc < end.astimezone(timezone.utc)
     observed_end = min(end.astimezone(timezone.utc), now_utc)
     key = (machine.mes_id, start.isoformat(), observed_end.isoformat() if not current else "current")
-    (code, downtime, cycles, derived, current_status, scrap), stale = cache.get(
+    (code, downtime, cycles, derived, current_status, scrap, cavity_data), stale = cache.get(
         key, lambda: _fetch(machine.mes_id, start, observed_end, current))
 
     events = []
@@ -126,6 +136,19 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                        "reason": str(row.get("reason") or "Unclassified stop")})
     events.sort(key=lambda item: item["start"])
 
+    cavity_rows, cavity_by_product, cavity_order = [], {}, None
+    if cavity_data is not None:
+        cavity_order = cavity_data.get("order_ref")
+        for row in cavity_data["cavities"]:
+            number = row.get("cavity_no") if isinstance(row, dict) else None
+            if isinstance(number, bool) or not isinstance(number, int) or not row.get("product"):
+                continue
+            cavity_by_product[row["product"]] = number
+            cavity_rows.append({"cavity_no": number, "product": row["product"], "label": row.get("label"),
+                                "qty_good": row.get("qty_good"), "qty_reject": row.get("qty_reject"),
+                                "reject_pct": row.get("reject_pct"), "target_pct": row.get("target_pct")})
+        cavity_rows.sort(key=lambda item: item["cavity_no"])
+
     declarations = None
     if scrap is not None:
         declarations = []
@@ -137,7 +160,10 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                 continue
             declarations.append({"time": at.isoformat(), "quantity": quantity,
                                  "reason": str(row.get("reason") or "Unspecified"),
-                                 "product": row.get("product")})
+                                 "product": row.get("product"),
+                                 # Cavity numbers are only valid for the order they were read for
+                                 "cavity_no": cavity_by_product.get(row.get("product"))
+                                 if row.get("order_ref") in (None, cavity_order) else None})
         declarations.sort(key=lambda item: item["time"])
 
     cycle_times = []
@@ -216,6 +242,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "hours": hours, "cycle_bins": bins,
                            "downtime_events": events,
                            "scrap_declarations": declarations,
+                           "cavities": {"order_ref": cavity_order, "rows": cavity_rows},
                            "summary": {"cycle_count": len(cycle_times) if cycle_times else
                                        sum(item["count"] for item in counter_intervals) if counter_intervals else None,
                                        "observed_stop_seconds": sum(item["seconds"] for item in events)
