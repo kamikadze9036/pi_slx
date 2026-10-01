@@ -145,6 +145,7 @@ def build_fleet(machines: list[Machine], displays: list[Display], shifts: list[S
         card["order"] = None if row.get("state") == "bez_zakazky" else (
             row.get("order_ref") if live_only else row.get("order_ref") or card["order"])
         card["tool"] = row.get("tool_label") or row.get("tool_ref")
+        card["tool_ref"] = row.get("tool_ref")
         card["cycle_time_real_s"] = row.get("cycle_time_real_s")
         card["cycle_time_planned_s"] = row.get("cycle_time_planned_s")
         card["collector_status"] = health.get("status") if health.get("status") in ("ok", "stale", "unknown") else None

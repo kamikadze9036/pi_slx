@@ -66,7 +66,7 @@ export interface FleetMachine {
   oee: number | null; good_count: number | null; target_good: number | null;
   scrap_count: number | null; downtime_seconds: number | null;
   shift_name: string | null; product: string | null; order: string | null;
-  tool: string | null; stop_reason: string | null;
+  tool: string | null; tool_ref: string | null; stop_reason: string | null;
   cycle_time_real_s: number | null; cycle_time_planned_s: number | null;
   collector_status: 'ok' | 'stale' | 'unknown' | null; last_cycle_age_s: number | null;
   worst_cavity_scrap: { cavity_no: number | null; reject_pct: number; target_pct: number | null; product: string | null } | null;

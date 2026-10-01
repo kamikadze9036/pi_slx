@@ -24,7 +24,7 @@ function MachineCard({ machine, liveOnly }: { machine: FleetMachine; liveOnly: b
     : machine.live_state === 'bezi' ? 'is-running' : 'is-unknown';
   const content = <>
     <div className="fleet-card-top"><strong>{machine.mes_id}</strong><span className="fleet-live-label">{liveLabels[machine.live_state || ''] || 'STATE UNKNOWN'}</span></div>
-    <div className="fleet-card-name" title={machine.name}>{machine.name}</div>
+    <div className="fleet-card-name">{machine.tool_ref || '—'}</div>
     <div className="fleet-card-order" title={machine.order || ''}>{machine.stop_reason && machine.live_state === 'stoji'
       ? `STOP · ${machine.stop_reason}` : machine.order ? `OF · ${machine.order}` : 'NO ACTIVE ORDER DATA'}</div>
     {liveOnly ? <>
