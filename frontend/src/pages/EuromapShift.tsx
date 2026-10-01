@@ -24,6 +24,21 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   const maxCycles = Math.max(1, ...live.hours.map(hour => hour.cycle_count || 0));
   const maxBin = Math.max(1, ...live.cycle_bins.map(bin => bin.count));
   const binWidth = Math.max(0.25, live.bin_minutes / ((new Date(shift.end).getTime() - new Date(shift.start).getTime()) / 60000) * 85);
+  const scrapList = live.scrap_declarations;
+  const scrapTotal = scrapList?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
+  const scrapBinMs = live.bin_minutes * 60000;
+  const scrapBins = new Map<number, number>();
+  for (const item of scrapList || []) {
+    const slot = Math.floor((new Date(item.time).getTime() - new Date(shift.start).getTime()) / scrapBinMs);
+    scrapBins.set(slot, (scrapBins.get(slot) || 0) + item.quantity);
+  }
+  const maxScrapBin = Math.max(1, ...scrapBins.values());
+  const scrapSlotWidth = Math.max(0.25, scrapBinMs / (new Date(shift.end).getTime() - new Date(shift.start).getTime()) * 100);
+  const scrapByReason = [...(scrapList || []).reduce((map, item) => {
+    const row = map.get(item.reason) || { reason: item.reason, quantity: 0, declarations: 0 };
+    row.quantity += item.quantity; row.declarations += 1; return map.set(item.reason, row);
+  }, new Map<string, { reason: string; quantity: number; declarations: number }>()).values()]
+    .sort((a, b) => b.quantity - a.quantity);
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
   const sourceNote = live.stop_source === 'cycles'
     ? 'Stop intervals inferred from gaps between recorded machine cycles. Shift boundaries may be incomplete.'
@@ -80,12 +95,24 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <div className="real-timeline-cycles" aria-label={counter ? 'Counter increase in sampled intervals' : 'Recorded cycles in ten-minute intervals'}>{live.cycle_bins.map(bin => <i key={bin.start}
         style={{ left: `${position(bin.start, shift.start, shift.end)}%`, width: `${binWidth}%`, height: `${Math.max(2, bin.count / maxBin * 100)}%` }}
         title={`${clock(bin.start)} · ${bin.count} ${counter ? 'counter increase' : 'cycles'}`} />)}</div>
-      <p className="real-shift-help">Unmarked time is not confirmed running. Bars show {counter ? 'counter changes' : 'cycles'}, not good pieces.</p>
+      {scrapList && <><div className="real-timeline-label">DECLARED SCRAP / {live.bin_minutes} MIN</div>
+        <div className="real-timeline-scrap" aria-label="Declared scrap in time intervals">{[...scrapBins].map(([slot, quantity]) => <i key={slot}
+          style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(8, quantity / maxScrapBin * 100)}%` }}
+          title={`${clock(new Date(new Date(shift.start).getTime() + slot * scrapBinMs).toISOString())} · ${number(quantity)} pcs declared`} />)}</div></>}
+      <p className="real-shift-help">Unmarked time is not confirmed running. Bars show {counter ? 'counter changes' : 'cycles'}, not good pieces.{scrapList ? ' Scrap bars show pieces declared by the operator in that interval, not when the scrap was produced.' : ''}</p>
     </section>}
     <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">02 / STOP DETAIL</span><h2>Recorded stop reasons</h2></div>
       {live.downtime_events.length ? <div className="real-stop-list">{live.downtime_events.map((event, index) => <div key={`${event.start}-${index}`}>
         <span>{clock(event.start)}–{clock(event.end)}</span><strong>{event.reason}</strong><b>{minutes(event.seconds)}</b></div>)}</div>
         : <p className="real-shift-help">No stop intervals returned for this shift. This does not confirm uninterrupted production.</p>}</section>
+    {view === 'imprint' && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / SCRAP DECLARATIONS</span><h2>Declared scrap{scrapList ? ` · ${number(scrapTotal)} pcs` : ''}</h2></div>
+      {scrapList === null ? <p className="real-shift-help">Scrap declarations are unavailable from Euromap63.</p>
+        : scrapList.length === 0 ? <p className="real-shift-help">No scrap was declared in this shift.</p> : <>
+        <div className="real-scrap-reasons">{scrapByReason.map(row => <div key={row.reason}>
+          <strong>{row.reason}</strong><span>{row.declarations}× declared</span><b>{number(row.quantity)} pcs</b></div>)}</div>
+        <div className="real-scrap-list" aria-label="Individual scrap declarations">{scrapList.map((item, index) => <div key={`${item.time}-${index}`}>
+          <span>{clock(item.time)}</span><strong>{item.reason}</strong><em>{item.product || ''}</em><b>{number(item.quantity)} pcs</b></div>)}</div></>}
+    </section>}
     <footer><span>{data.display.name.toUpperCase()} / {shift.name.toUpperCase()}</span>
       <span>EUROMAP63 API · NO SIMULATED PRODUCTION DATA</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>
   </main>;

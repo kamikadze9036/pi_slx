@@ -37,6 +37,7 @@ export interface DashboardData {
       stop_seconds: number | null; stop_count: number | null }[];
     cycle_bins: { start: string; count: number }[];
     downtime_events: { start: string; end: string; seconds: number; reason: string }[];
+    scrap_declarations: { time: string; quantity: number; reason: string; product: string | null }[] | null;
     summary: { cycle_count: number | null; observed_stop_seconds: number | null;
       observed_stop_count: number | null };
   };

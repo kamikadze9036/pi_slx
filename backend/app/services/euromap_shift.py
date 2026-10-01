@@ -38,7 +38,7 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
             raise ValueError(f"Machine {machine_id} is not in Euromap63")
         code = str(machine["machine_code"])
         params = {"machine": code, "since": start.isoformat(), "until": end.isoformat()}
-        downtime = cycles = derived = current_status = None
+        downtime = cycles = derived = current_status = scrap = None
         try:
             response = client.get("/api/downtimes", params=params)
             response.raise_for_status()
@@ -80,9 +80,18 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
                                        and row.get("machine_code") == code), None)
             except (httpx.HTTPError, ValueError):
                 log.exception("Euromap63 current status unavailable machine=%s", code)
+        try:
+            response = client.get("/api/scrap-declarations", params=params)
+            response.raise_for_status()
+            scrap = response.json()
+            if not isinstance(scrap, dict) or not isinstance(scrap.get("declarations"), list):
+                raise ValueError("Invalid Euromap63 scrap declarations response")
+        except (httpx.HTTPError, ValueError):
+            log.exception("Euromap63 scrap declarations unavailable machine=%s", code)
+            scrap = None
         if downtime is None and cycles is None and derived is None and current_status is None:
             raise ValueError(f"No Euromap63 shift data available for {code}")
-        return code, downtime, cycles, derived, current_status
+        return code, downtime, cycles, derived, current_status, scrap
 
 
 def build_euromap_shift(display, machine, shifts, now: datetime,
@@ -98,7 +107,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     current = start.astimezone(timezone.utc) <= now_utc < end.astimezone(timezone.utc)
     observed_end = min(end.astimezone(timezone.utc), now_utc)
     key = (machine.mes_id, start.isoformat(), observed_end.isoformat() if not current else "current")
-    (code, downtime, cycles, derived, current_status), stale = cache.get(
+    (code, downtime, cycles, derived, current_status, scrap), stale = cache.get(
         key, lambda: _fetch(machine.mes_id, start, observed_end, current))
 
     events = []
@@ -116,6 +125,20 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                        "seconds": utc_seconds(begin, finish),
                        "reason": str(row.get("reason") or "Unclassified stop")})
     events.sort(key=lambda item: item["start"])
+
+    declarations = None
+    if scrap is not None:
+        declarations = []
+        for row in scrap["declarations"]:
+            at = _time(row.get("time")) if isinstance(row, dict) else None
+            quantity = row.get("quantity") if isinstance(row, dict) else None
+            if (at is None or not start.astimezone(timezone.utc) <= at < observed_end
+                    or isinstance(quantity, bool) or not isinstance(quantity, (int, float)) or quantity <= 0):
+                continue
+            declarations.append({"time": at.isoformat(), "quantity": quantity,
+                                 "reason": str(row.get("reason") or "Unspecified"),
+                                 "product": row.get("product")})
+        declarations.sort(key=lambda item: item["time"])
 
     cycle_times = []
     for row in cycles if isinstance(cycles, list) else []:
@@ -192,6 +215,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "current_machine": current_status,
                            "hours": hours, "cycle_bins": bins,
                            "downtime_events": events,
+                           "scrap_declarations": declarations,
                            "summary": {"cycle_count": len(cycle_times) if cycle_times else
                                        sum(item["count"] for item in counter_intervals) if counter_intervals else None,
                                        "observed_stop_seconds": sum(item["seconds"] for item in events)

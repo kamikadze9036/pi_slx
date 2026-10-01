@@ -21,7 +21,11 @@ def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monke
             {"start": "2026-09-24T06:55:00+02:00", "end": "2026-09-24T07:10:00+02:00",
              "reason": "Material feed"}]},
         [{"time": "2026-09-24T06:10:00+02:00"},
-         {"time": "2026-09-24T07:20:00+02:00"}], None, None))
+         {"time": "2026-09-24T07:20:00+02:00"}], None, None,
+        {"declarations": [
+            {"time": "2026-09-24T06:30:00+02:00", "quantity": 2.0, "reason": "Burn", "product": "FG1"},
+            {"time": "2026-09-24T05:00:00+02:00", "quantity": 9.0, "reason": "Outside shift"},
+            {"time": "2026-09-24T06:40:00+02:00", "quantity": 0, "reason": "Zero"}]}))
     now = datetime(2026, 9, 25, 10, tzinfo=PRAGUE).astimezone(timezone.utc)
     result = euromap_shift.build_euromap_shift(
         DISPLAY, MACHINE, [SHIFT], now, {"refresh_seconds": 10},
@@ -36,12 +40,14 @@ def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monke
     assert live["hours"][0]["cycle_count"] == 1
     assert live["hours"][1]["cycle_count"] == 1
     assert "production" not in result and "oee" not in result
+    assert live["scrap_declarations"] == [
+        {"time": "2026-09-24T04:30:00+00:00", "quantity": 2.0, "reason": "Burn", "product": "FG1"}]
 
 
 def test_empty_recording_is_unavailable_not_zero(monkeypatch):
     monkeypatch.setattr(euromap_shift, "cache", SnapshotCache(15))
     monkeypatch.setattr(euromap_shift, "_fetch", lambda machine, start, end, current: (
-        "P1100-03", {"source": "histo_events", "segments": []}, [], [], None))
+        "P1100-03", {"source": "histo_events", "segments": []}, [], [], None, None))
     now = datetime(2026, 9, 25, 10, tzinfo=PRAGUE).astimezone(timezone.utc)
     result = euromap_shift.build_euromap_shift(
         DISPLAY, MACHINE, [SHIFT], now, {"refresh_seconds": 10},
@@ -63,7 +69,7 @@ def test_sampled_counter_increase_is_shown_without_claiming_piece_output(monkeyp
              "delta_count": 14.0},
             {"window_start": "2026-09-25T06:30:00+02:00", "time": "2026-09-25T06:45:00+02:00",
              "delta_count": -4.0},
-        ], {"state": "bezi", "order_ref": "OF-42", "cycle_time_real_s": 59.0}))
+        ], {"state": "bezi", "order_ref": "OF-42", "cycle_time_real_s": 59.0}, None))
     now = datetime(2026, 9, 25, 7, tzinfo=PRAGUE).astimezone(timezone.utc)
     result = euromap_shift.build_euromap_shift(
         DISPLAY, MACHINE, [SHIFT], now, {"refresh_seconds": 10})
