@@ -32,7 +32,7 @@
 .real-timeline-axis{display:flex;justify-content:space-between;color:var(--real-muted);font-size:11px;font-weight:800;margin:5px 0}
 .real-timeline-label{color:var(--real-muted);font-size:10px;font-weight:800;letter-spacing:.1em;margin:11px 0 5px}
 .real-timeline-stops{position:relative;height:29px;background:var(--real-track);overflow:hidden}
-.real-timeline-stops i{position:absolute;top:0;height:100%;background:#ee6a63;min-width:2px}
+.real-timeline-stops i{position:absolute;top:0;height:100%;background:#ee6a63;min-width:4px;box-sizing:border-box;box-shadow:inset 2px 0 0 var(--real-track),inset -2px 0 0 var(--real-track)}
 .real-timeline-cycles{position:relative;height:74px;background:var(--real-track);overflow:hidden}
 .real-timeline-cycles i{position:absolute;bottom:0;background:#40bd96;min-width:2px}
 .real-stop-list{max-height:250px;overflow:auto}.real-stop-list>div{display:grid;grid-template-columns:115px minmax(0,1fr) 76px;gap:12px;padding:7px 0;border-bottom:1px solid var(--real-border);font-size:12px}
