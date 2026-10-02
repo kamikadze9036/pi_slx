@@ -40,9 +40,9 @@
 .imprint-hour-segment.good,.imprint-hour-legend .good{background:#42c99b}
 .imprint-hour-segment.speed,.imprint-hour-legend .speed{background:#e8bf52}
 .imprint-hour-segment.micro,.imprint-hour-legend .micro{background:#a17ad8}
-.imprint-hour-segment.down,.imprint-hour-legend .down{background:#ee6a63}
+.imprint-hour-segment.down,.imprint-hour-legend .down{background:#f29c5a}
 .imprint-hour-segment.break,.imprint-hour-legend .break{background:#5a9bc9}
-.imprint-hour-segment.scrap,.imprint-hour-legend .scrap{background:#f29c5a}
+.imprint-hour-segment.scrap,.imprint-hour-legend .scrap{background:#ee6a63}
 .imprint-hour-segment.unknown,.imprint-hour-legend .unknown{background:#9baab0}
 .imprint-hour-figure{color:#90a9b1;font-size:9px;font-weight:800;white-space:nowrap}
 .imprint-hour-figure b{color:#eaf4f4;font-size:13px;margin-left:3px}

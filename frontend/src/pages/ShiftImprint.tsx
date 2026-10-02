@@ -8,6 +8,7 @@ import { EuromapShift } from './EuromapShift';
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const fmt = (value: number) => new Intl.NumberFormat('en-US').format(value);
 const pct = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value * 100)}%`;
+const pct2 = (value: number | null | undefined) => value == null ? '—' : `${(value * 100).toFixed(2)}%`;
 const mins = (value: number) => `${Math.round(value / 60)} min`;
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const position = (at: string, start: string, end: string) => Math.max(0, Math.min(100,
@@ -120,9 +121,9 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
     <section className="imprint-kpis">
       <div><span>GOOD PIECES</span><strong>{fmt(summary.good_count)}</strong><small>Target {production.target == null ? '—' : fmt(production.target)}</small></div>
       <div><span>OEE</span><strong>{pct(summary.oee)}</strong><small>{data.shift_navigation?.is_current ? 'Shift to date' : 'Full shift'}</small></div>
-      <div><span>DOWNTIME</span><strong className="red-text">{mins(summary.downtime_seconds)}</strong><small>Unplanned stops</small></div>
+      <div><span>DOWNTIME</span><strong className="orange-text">{mins(summary.downtime_seconds)}</strong><small>Unplanned stops</small></div>
       <div><span>MICRO STOPS</span><strong className="purple-text">{mins(events.filter(item => item.category === 'micro_stop').reduce((sum, item) => sum + item.seconds, 0))}</strong><small>Short interruptions</small></div>
-      <div><span>SCRAP</span><strong className="orange-text">{fmt(summary.scrap_count)}</strong><small>{pct(summary.scrap_percent)} of output</small></div>
+      <div><span>SCRAP</span><strong className="red-text">{fmt(summary.scrap_count)}</strong><small>{pct2(summary.scrap_percent)} of output</small></div>
     </section>
     <section className="imprint-panel timeline-panel"><div className="imprint-panel-head"><div><span className="eyebrow">01 / CHRONOLOGICAL VIEW</span><h2>Shift timeline</h2></div><span>RUNNING / STOPS / SCRAP REPORTS</span></div>
       <div className="timeline-axis">{(data.ticks || [shift.start, shift.end]).map((tick, index, array) => <span key={`${tick}-${index}`} className={index === 0 ? 'first' : index === array.length - 1 ? 'last' : ''}
@@ -150,7 +151,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       {(data.downtime_reasons || []).length ? <div className="reason-list">{data.downtime_reasons!.slice(0, 5).map(item => <div className="reason-row" key={`${item.category}-${item.reason}`}>
         <span className={`reason-dot ${categoryClass(item.category)}`}></span><span className="reason-name">{item.reason}</span><div className="reason-bar"><i className={categoryClass(item.category)} style={{ width: `${item.seconds / maxReason * 100}%` }}></i></div><strong>{mins(item.seconds)}</strong></div>)}</div>
         : <p className="panel-empty">{data.downtime_detail_available ? 'No recorded stops in this shift.' : 'Reason mapping unavailable.'}</p>}</div>
-      <div className="imprint-panel scrap-panel"><div className="imprint-panel-head"><div><span className="eyebrow">04 / QUALITY</span><h2>Scrap reporting</h2></div><span>{fmt(summary.scrap_count)} PCS / {pct(summary.scrap_percent)}</span></div>
+      <div className="imprint-panel scrap-panel"><div className="imprint-panel-head"><div><span className="eyebrow">04 / QUALITY</span><h2>Scrap reporting</h2></div><span>{fmt(summary.scrap_count)} PCS / {pct2(summary.scrap_percent)}</span></div>
         <div className="scrap-content"><div className="scrap-hour-chart">{hours.map(hour => <div key={hour.start}><div className="scrap-column"><i style={{ height: `${hour.scrap_count / maxScrap * 100}%` }}></i></div><span>{clock(hour.start)}</span></div>)}</div>
           <div className="scrap-reasons">{(data.scrap_reasons || []).slice(0, 4).map(item => <div key={item.reason}><span>{item.reason}</span><strong>{item.count} pcs</strong></div>)}
             {!data.scrap_detail_available && <p className="panel-empty">Reason mapping unavailable.</p>}</div></div></div></section>

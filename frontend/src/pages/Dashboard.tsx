@@ -8,6 +8,7 @@ import { EuromapShift } from './EuromapShift';
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
 const pct = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value * 100)}%`;
+const pct2 = (value: number | null | undefined) => value == null ? '—' : `${(value * 100).toFixed(2)}%`;
 const mins = (value: number) => `${Math.round(value / 60)}m`;
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -140,8 +141,8 @@ export function Dashboard({ displayId }: { displayId: string }) {
         {show('performance') && <Kpi label="PERFORMANCE" value={pct(summary.performance)} />}
         {show('quality') && <Kpi label="QUALITY" value={pct(summary.quality)} />}
         {show('good') && <Kpi label="GOOD PIECES" value={number(summary.good_count)} accent="green-text" />}
-        {show('scrap') && <Kpi label="SCRAP" value={number(summary.scrap_count)} note={`${pct(summary.scrap_percent)} OF TOTAL`} accent="orange-text" />}
-        {show('downtime') && <Kpi label="DOWNTIME" value={mins(summary.downtime_seconds)} accent="red-text" />}
+        {show('scrap') && <Kpi label="SCRAP" value={number(summary.scrap_count)} note={`${pct2(summary.scrap_percent)} OF TOTAL`} accent="red-text" />}
+        {show('downtime') && <Kpi label="DOWNTIME" value={mins(summary.downtime_seconds)} accent="orange-text" />}
         {show('speed_loss') && <Kpi label="SPEED LOSS" value={mins(summary.speed_loss_seconds)} accent="yellow-text" />}
       </div></section>
     <footer><span>{data.display.name.toUpperCase()} <span className="footer-sep">/</span> {data.shift!.name.toUpperCase()} SHIFT</span><span>{summary.warnings.length > 0 ? `DATA QUALITY · ${summary.warnings.join(', ')}` : 'DATA QUALITY · OK'}</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>

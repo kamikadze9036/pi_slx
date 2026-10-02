@@ -112,7 +112,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
       <div><span>CURRENT ORDER</span><strong>{live.current_machine.order_ref || '—'}</strong></div>
       <div><span>ACTUAL / PLANNED CYCLE</span><strong>{seconds(live.current_machine.cycle_time_real_s)} / {seconds(live.current_machine.cycle_time_planned_s)}</strong></div>
-      <div><span>WORST CAVITY · CURRENT ORDER</span><strong>{live.current_machine.worst_cavity_scrap?.reject_pct != null ? `${live.current_machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></div>
+      <div><span>WORST CAVITY · CURRENT ORDER</span><strong>{live.current_machine.worst_cavity_scrap?.reject_pct != null ? `${live.current_machine.worst_cavity_scrap.reject_pct.toFixed(2)}%` : '—'}</strong></div>
     </section>}
     <div className="real-shift-note">{counter ? 'Cycle counts come from changes in a sampled machine counter; missing intervals and counter resets are excluded. ' : ''}{sourceNote} Good pieces, shift scrap and OEE are unavailable until a verified production source is connected.</div>
     {!hasObservedData && <div className="real-shift-empty">No cycle or stop records are available for this shift. No production quantity is inferred.</div>}
@@ -163,7 +163,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
             <b>{number(qty)} pcs</b>
             <span className="real-cav-bar"><span className="real-bar"><i style={{ width: `${share}%` }} /></span><em>{share.toFixed(0)}%</em></span>
             <span className="real-cav-bar">{row?.reject_pct != null ? <><span className="real-bar"><i className={over ? 'over' : ''} style={{ width: `${Math.min(100, row.reject_pct / 20 * 100)}%` }} />
-              {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''}>{row.reject_pct.toFixed(1)}%</em></> : <em>—</em>}</span>
+              {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''}>{row.reject_pct.toFixed(2)}%</em></> : <em>—</em>}</span>
           </div>; })}</div>
       <p className="real-shift-help">Order scrap rate = scrap / (good + scrap) for the whole order as kept by Cyclades; the marker is the target. Good pieces per cavity are not available per shift.</p>
     </section>}

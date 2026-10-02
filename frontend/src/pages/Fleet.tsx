@@ -30,7 +30,7 @@ function MachineCard({ machine, liveOnly }: { machine: FleetMachine; liveOnly: b
     {liveOnly ? <>
       <div className="fleet-card-main"><div><small>ACTUAL / PLANNED CYCLE</small><strong>{cycle(machine.cycle_time_real_s)}</strong></div>
         <div className="fleet-good"><small>PLAN</small><strong>{cycle(machine.cycle_time_planned_s)}</strong></div></div>
-      <div className="fleet-card-metrics fleet-live-metrics"><span title="Worst cavity reject rate for the current order, not this shift">WORST CAVITY · OF <strong>{machine.worst_cavity_scrap ? `${machine.worst_cavity_scrap.reject_pct.toFixed(1)}%` : '—'}</strong></span>
+      <div className="fleet-card-metrics fleet-live-metrics"><span title="Worst cavity reject rate for the current order, not this shift">WORST CAVITY · OF <strong>{machine.worst_cavity_scrap ? `${machine.worst_cavity_scrap.reject_pct.toFixed(2)}%` : '—'}</strong></span>
         <span>{machine.worst_cavity_scrap?.cavity_no != null ? `CAVITY ${machine.worst_cavity_scrap.cavity_no}` : ''}</span></div>
       <div className="fleet-card-foot"><span>{machine.collector_status === 'ok' ? `E63 COLLECTOR OK · CYCLE ${age(machine.last_cycle_age_s)}`
         : machine.collector_status === 'stale' ? 'E63 COLLECTOR STALE' : 'EUROMAP63 STATE FEED'}</span><b>{href ? 'DETAIL ↗' : '—'}</b></div>
