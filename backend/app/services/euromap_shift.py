@@ -22,6 +22,11 @@ def _time(value):
         return None
 
 
+# The downtimes endpoint only returns a stop whose bounding cycles both fall inside the
+# requested window, so stops crossing a shift boundary vanish unless the window is padded.
+DOWNTIME_PAD = timedelta(hours=12)
+
+
 def _fetch(machine_id: str, start: datetime, end: datetime, include_current_status: bool):
     base = settings.euromap63_api_url.rstrip("/")
     if not base:
@@ -40,7 +45,9 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
         params = {"machine": code, "since": start.isoformat(), "until": end.isoformat()}
         downtime = cycles = derived = current_status = scrap = cavities = None
         try:
-            response = client.get("/api/downtimes", params=params)
+            response = client.get("/api/downtimes", params={
+                **params, "since": (start - DOWNTIME_PAD).isoformat(),
+                "until": min(end + DOWNTIME_PAD, datetime.now(timezone.utc)).isoformat()})
             response.raise_for_status()
             downtime = response.json()
             if not isinstance(downtime, dict) or not isinstance(downtime.get("segments"), list):
