@@ -18,16 +18,18 @@
 .real-shift-empty{border-color:#ba8174;color:var(--real-ink)}
 .real-shift-panel{background:var(--real-panel);border:1px solid var(--real-border);margin-top:12px;padding:16px 18px 14px}
 .real-shift-section-head{margin-bottom:13px}.real-shift-section-head h2{font-family:'Barlow Condensed',sans-serif;font-size:28px;line-height:1;margin:5px 0 0;text-transform:uppercase}
-.real-hour-heading,.real-hour-row{display:grid;grid-template-columns:112px minmax(0,1fr) 76px 70px 90px;gap:12px;align-items:center}
+.real-hour-heading,.real-hour-row{display:grid;grid-template-columns:112px minmax(0,1fr) 76px 70px 90px 70px;gap:12px;align-items:center}
 .real-hour-heading{color:var(--real-muted);font-size:10px;font-weight:800;letter-spacing:.08em;padding:0 0 7px;border-bottom:1px solid var(--real-border)}
 .real-hour-heading span:nth-child(n+3),.real-hour-row>span{text-align:right}
 .real-hour-row{padding:8px 0;border-bottom:1px solid var(--real-border);font-size:13px}.real-hour-row:last-child{border-bottom:0}
 .real-hour-row>strong{font-family:'Barlow Condensed',sans-serif;font-size:19px;white-space:nowrap}
 .real-hour-row>span{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:700}
 .real-hour-bars{display:flex;flex-direction:column;gap:3px}
-.real-hour-cycle-track,.real-hour-stop-track{height:10px;background:var(--real-track);overflow:hidden}
-.real-hour-cycle-track i,.real-hour-stop-track i{display:block;height:100%;background:#40bd96}
+.real-hour-cycle-track,.real-hour-stop-track,.real-hour-scrap-track{height:10px;background:var(--real-track);overflow:hidden}
+.real-hour-cycle-track i,.real-hour-stop-track i,.real-hour-scrap-track i{display:block;height:100%;background:#40bd96}
 .real-hour-stop-track i{background:#e0a23a}
+.real-hour-scrap-track i{background:#ee6a63}
+.real-hour-row>span.real-hour-scrap{color:#ee6a63}.theme-light .real-hour-scrap-track i{background:#c9343e}.theme-light .real-hour-row>span.real-hour-scrap{color:#bd2e3a}
 .real-shift-help{color:var(--real-muted);font-size:11px;line-height:1.4;margin:11px 0 0}
 .real-timeline-axis{display:flex;justify-content:space-between;color:var(--real-muted);font-size:11px;font-weight:800;margin:5px 0}
 .real-timeline-label{color:var(--real-muted);font-size:10px;font-weight:800;letter-spacing:.1em;margin:11px 0 5px}
@@ -39,7 +41,7 @@
 .real-stop-list>div:last-child{border-bottom:0}.real-stop-list span{color:var(--real-muted)}.real-stop-list strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.real-stop-list b{text-align:right;color:#d9922b}
 .theme-light .real-stop-list b{color:#a86408}
 .real-shift-screen footer{margin-top:12px}
-@media(max-width:750px){.real-shift-head{align-items:start;flex-direction:column}.real-current-machine{grid-template-columns:repeat(2,minmax(0,1fr))}.real-shift-kpis>div{padding:9px}.real-shift-kpis strong{font-size:30px}.real-shift-kpis small{font-size:9px}.real-hour-heading,.real-hour-row{grid-template-columns:82px minmax(0,1fr) 50px 68px;gap:6px}.real-hour-heading span:nth-child(4),.real-hour-row>span:nth-last-child(2){display:none}.real-hour-row>strong{font-size:15px}.real-hour-row>span{font-size:16px}.real-shift-panel{padding:12px}}
+@media(max-width:750px){.real-shift-head{align-items:start;flex-direction:column}.real-current-machine{grid-template-columns:repeat(2,minmax(0,1fr))}.real-shift-kpis>div{padding:9px}.real-shift-kpis strong{font-size:30px}.real-shift-kpis small{font-size:9px}.real-hour-heading,.real-hour-row{grid-template-columns:82px minmax(0,1fr) 50px 50px;gap:6px}.real-hour-heading span:nth-child(4),.real-hour-heading span:nth-child(5),.real-hour-row>span:nth-child(4),.real-hour-row>span:nth-child(5){display:none}.real-hour-row>strong{font-size:15px}.real-hour-row>span{font-size:16px}.real-shift-panel{padding:12px}}
 .real-timeline-scrap{position:relative;height:36px;background:var(--real-track);overflow:hidden}
 .real-timeline-scrap i{position:absolute;bottom:0;background:#ee6a63;min-width:3px;box-sizing:border-box;box-shadow:inset 1px 0 0 var(--real-track),inset -1px 0 0 var(--real-track)}
 .real-scrap-reasons>div,.real-scrap-list>div{display:grid;gap:12px;padding:7px 0;border-bottom:1px solid var(--real-border);font-size:12px}

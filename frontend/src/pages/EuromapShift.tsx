@@ -73,6 +73,19 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     return [`${clock(new Date(from).toISOString())}–${clock(new Date(from + scrapBinMs).toISOString())} · ${number(total)} pcs declared`,
       ...[...rows].sort((a, b) => b[1] - a[1]).map(([label, quantity]) => `${label}: ${number(quantity)} pcs`)].join('\n');
   };
+  // Declared scrap per shift hour, with reasons for the hover text; null when the scrap source is unavailable
+  const hourScrap = (hour: { start: string; end: string }) => {
+    if (!scrapList) return null;
+    const from = new Date(hour.start).getTime(), to = new Date(hour.end).getTime();
+    const reasons = new Map<string, number>();
+    for (const item of scrapList) {
+      const at = new Date(item.time).getTime();
+      if (at >= from && at < to) reasons.set(item.reason, (reasons.get(item.reason) || 0) + item.quantity);
+    }
+    const total = [...reasons.values()].reduce((sum, quantity) => sum + quantity, 0);
+    return { total, title: [`${number(total)} pcs declared`, ...[...reasons].sort((a, b) => b[1] - a[1]).map(([label, quantity]) => `${label}: ${number(quantity)} pcs`)].join('\n') };
+  };
+  const maxHourScrap = Math.max(1, ...live.hours.map(hour => hourScrap(hour)?.total ?? 0));
   let worstCavity: number | null = null, worstPct = -1;
   for (const row of cavityRows) if (row.reject_pct != null && row.reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.reject_pct; }
   const reasonRows = scrapByReason.map(row => ({ ...row, byLane: lanes.map(no => laneQty(no, row.reason)) }));
@@ -117,16 +130,19 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     <div className="real-shift-note">{counter ? 'Cycle counts come from changes in a sampled machine counter; missing intervals and counter resets are excluded. ' : ''}{sourceNote} Good pieces, shift scrap and OEE are unavailable until a verified production source is connected.</div>
     {!hasObservedData && <div className="real-shift-empty">No cycle or stop records are available for this shift. No production quantity is inferred.</div>}
     {view === 'hourly' ? <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">01 / HOURLY VIEW</span><h2>Recorded activity by hour</h2></div>
-      <div className="real-hour-heading"><span>HOUR</span><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'} / OBSERVED STOP TIME</span><span>{counter ? 'COUNT' : 'CYCLES'}</span><span>STOPS</span><span>STOP TIME</span></div>
-      <div className="real-hours">{live.hours.map(hour => <div className="real-hour-row" key={hour.start}>
+      <div className="real-hour-heading"><span>HOUR</span><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'} / OBSERVED STOP TIME</span><span>{counter ? 'COUNT' : 'CYCLES'}</span><span>STOPS</span><span>STOP TIME</span><span>SCRAP</span></div>
+      <div className="real-hours">{live.hours.map(hour => { const scrap = hourScrap(hour); return <div className="real-hour-row" key={hour.start}>
         <strong>{clock(hour.start)}–{clock(hour.end)}</strong>
         <div className="real-hour-bars"><div className="real-hour-cycle-track" aria-label={`${number(hour.cycle_count)} ${counter ? 'counter increase' : 'recorded cycles'}`}>
           {hour.cycle_count != null && <i style={{ width: `${hour.cycle_count / maxCycles * 100}%` }} />}</div>
           <div className="real-hour-stop-track" aria-label={`${minutes(hour.stop_seconds)} observed stop time`}>
-            {hour.stop_seconds != null && <i style={{ width: `${Math.min(100, hour.stop_seconds / hour.elapsed_seconds * 100)}%` }} />}</div></div>
+            {hour.stop_seconds != null && <i style={{ width: `${Math.min(100, hour.stop_seconds / hour.elapsed_seconds * 100)}%` }} />}</div>
+          {scrap && <div className="real-hour-scrap-track" title={scrap.title} aria-label={`${number(scrap.total)} pcs declared scrap`}>
+            {scrap.total > 0 && <i style={{ width: `${scrap.total / maxHourScrap * 100}%` }} />}</div>}</div>
         <span>{number(hour.cycle_count)}</span><span>{number(hour.stop_count)}</span><span>{minutes(hour.stop_seconds)}</span>
-      </div>)}</div>
-      <p className="real-shift-help">Green: {counter ? 'sampled counter increase' : 'recorded cycle count'} relative to the busiest hour. Red: observed stop time relative to elapsed time in that hour. “—” means unavailable, not zero.</p>
+        <span className="real-hour-scrap" title={scrap?.title}>{scrap ? number(scrap.total) : '—'}</span>
+      </div>; })}</div>
+      <p className="real-shift-help">Green: {counter ? 'sampled counter increase' : 'recorded cycle count'} relative to the busiest hour. Orange: observed stop time relative to elapsed time in that hour. Red: scrap pieces declared in that hour relative to the worst hour (pieces declared by the operator, not when they were produced). “—” means unavailable, not zero.</p>
     </section> : <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">01 / CHRONOLOGICAL VIEW</span><h2>Recorded shift imprint</h2></div>
       <div className="real-timeline-axis"><span>{clock(shift.start)}</span><span>{clock(shift.end)}</span></div>
       <div className="real-timeline-label">OBSERVED STOP INTERVALS</div>
