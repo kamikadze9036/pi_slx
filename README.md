@@ -47,6 +47,13 @@ The new hourly display uses the uploaded whiteboard layout and the application's
 
 Verified MES providers additionally supply event reasons through the imprint endpoint and retain category composition, OEE and calculated/ideal cycle gauges. The minutes/pieces preference persists separately from the original display. The calculated cycle is productive runtime × pieces per cycle / total pieces, not individually measured cycle history. Source comments are read-only; optional `comment` fields from event/report queries or Euromap63 observations are passed through. Unavailable values remain unavailable, rather than implying zero or inventing production/OEE.
 
+The proposed next revision, including the PDF-style composition, OK pieces,
+recoverable output, two distinct capacity definitions, source-data gaps and
+implementation handoff, is documented in
+[docs/hourly-new-pdf-proposal.md](docs/hourly-new-pdf-proposal.md), with an
+[illustrative wireframe](docs/hourly-new-wireframe.svg). This proposal is not
+yet implemented or deployed.
+
 ## Configuration
 
 | Variable | Purpose |

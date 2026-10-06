@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="title description">
+  <title id="title">Proposed new hourly overview with a common production-loss composition</title>
+  <desc id="description">Synthetic completed hour: 170 OK pieces, 10 scrap pieces, 40 downtime equivalents, 8 micro-stop equivalents and 12 speed-loss equivalents. Potential without scrap or stops at the achieved rate is 225, ideal capacity 240, efficiency 70.83 percent, actual cycle 32 versus ideal 30 seconds.</desc>
+  <defs>
+    <style>
+      text{font-family:Arial,sans-serif;fill:#14282b}.muted{fill:#526d72}.label{font-size:12px;letter-spacing:1px}.small{font-size:13px}.body{font-size:16px}.value{font-size:32px;font-weight:700}.white{fill:#fff}.border{stroke:#c7d5d1;fill:none}.green{fill:#159773}.red{fill:#d64b50}.orange{fill:#d78736}.purple{fill:#8a67bc}.yellow{fill:#d0a32b}
+    </style>
+  </defs>
+  <rect width="1600" height="820" fill="#f2f5f3"/>
+  <text x="40" y="36" class="label green">PRODUCTION EFFICIENCY</text>
+  <text x="285" y="36" class="label muted">HOURLY RECORDS</text>
+  <text x="500" y="36" class="label green">NEW HOURLY OVERVIEW</text>
+  <path d="M500 47H684" stroke="#159773" stroke-width="2"/>
+  <text x="1430" y="36" class="small muted">DESIGN PROPOSAL</text>
+  <path d="M40 60H1560" class="border"/>
+  <text x="40" y="96" class="value">PRESS / HOURLY OUTPUT</text>
+  <text x="40" y="121" class="small muted">Completed hour 06:00-07:00 · Illustrative verified inputs · English UI / existing palette</text>
+  <rect x="40" y="144" width="1520" height="94" fill="#fff" stroke="#c7d5d1"/>
+  <path d="M40 144H1560" stroke="#159773" stroke-width="3"/>
+  <path d="M420 144V238M800 144V238M1180 144V238" class="border"/>
+  <text x="60" y="171" class="label muted">OK PIECES</text><text x="60" y="213" class="value">170 pcs</text>
+  <text x="440" y="171" class="label muted">WITHOUT SCRAP / STOPS</text><text x="440" y="213" class="value green">225 pcs</text>
+  <text x="820" y="171" class="label muted">RECOVERABLE OUTPUT</text><text x="820" y="213" class="value green">+55 pcs</text>
+  <text x="1200" y="171" class="label muted">IDEAL CAPACITY</text><text x="1200" y="213" class="value">240 pcs</text>
+  <text x="40" y="266" class="small muted">Observed stops: 1 · Stop time: 10 min · Micro-stops: 2 min · Scrap: 10 pcs</text>
+  <text x="1280" y="266" class="small green">MINUTES    [ PIECES / EQ. ]</text>
+  <rect x="40" y="287" width="1520" height="405" fill="#fff" stroke="#c7d5d1"/>
+  <path d="M40 329H1560M40 582H1560M80 287V692M270 287V692M460 287V692M610 287V692M760 287V692M1070 287V692M1335 287V692" class="border"/>
+  <text x="46" y="313" font-size="9" class="muted">ORDER</text><text x="116" y="313" class="label muted">HOUR / MACHINE</text>
+  <text x="286" y="313" class="label muted">OUTPUT / LOSSES</text><text x="478" y="313" class="label muted">OEE</text><text x="629" y="313" class="label muted">CYCLE</text>
+  <text x="775" y="313" class="label muted">TYPE</text><text x="1085" y="313" class="label muted">REASON</text><text x="1350" y="313" class="label muted">COMMENT</text>
+  <text x="62" y="501" transform="rotate(-90 62 501)" class="small muted">DEMO ORDER A</text>
+  <text x="102" y="433" font-size="27" font-weight="700">06:00-07:00</text><text x="151" y="465" class="small muted">PRESS</text>
+  <rect x="114" y="492" width="124" height="28" fill="#f2f5f3" stroke="#c7d5d1"/><text x="127" y="511" class="small green">Hour details +</text>
+  <rect x="286" y="345" width="112" height="206" class="green"/><rect x="398" y="345" width="6.6" height="206" class="red"/>
+  <rect x="404.6" y="345" width="26.3" height="206" class="orange"/><rect x="430.9" y="345" width="5.3" height="206" class="purple"/><rect x="436.2" y="345" width="7.8" height="206" class="yellow"/>
+  <text x="313" y="455" class="value white">170</text>
+  <text x="419" y="482" transform="rotate(-90 419 482)" class="small white">40 eq.</text>
+  <text x="286" y="571" font-size="10" class="muted">One shared scale: 240 pcs capacity</text>
+  <circle cx="535" cy="432" r="49" fill="none" stroke="#e4ece8" stroke-width="8"/>
+  <circle cx="535" cy="432" r="49" fill="none" stroke="#159773" stroke-width="8" stroke-dasharray="218.07 307.88" transform="rotate(-90 535 432)"/>
+  <text x="535" y="441" text-anchor="middle" font-size="25" font-weight="700">70.8%</text><text x="535" y="507" text-anchor="middle" class="body">170 / 240 pcs</text><text x="535" y="529" text-anchor="middle" font-size="11" class="muted">OK / ideal capacity</text>
+  <circle cx="685" cy="432" r="49" fill="none" stroke="#d64b50" stroke-width="8"/>
+  <text x="685" y="442" text-anchor="middle" font-size="29" font-weight="700">+2.0s</text><text x="685" y="507" text-anchor="middle" class="body">32.0 / 30.0 s</text><text x="685" y="529" text-anchor="middle" font-size="11" class="muted">Calculated / ideal</text>
+  <path d="M760 383H1560M760 423H1560M760 463H1560M760 503H1560M760 543H1560" class="border"/>
+  <rect x="777" y="356" width="10" height="10" class="green"/><text x="797" y="367" class="body">OK production, 170 pcs</text><text x="1085" y="367" class="small muted">-</text><text x="1350" y="367" class="small muted">-</text>
+  <rect x="777" y="396" width="10" height="10" class="orange"/><text x="797" y="407" class="body">Downtime, 10 min / 40 pcs eq.</text><text x="1085" y="407" class="small">Material feed</text><text x="1350" y="407" class="small">Source comment</text>
+  <rect x="777" y="436" width="10" height="10" class="purple"/><text x="797" y="447" class="body">Micro-stops, 2 min / 8 pcs eq.</text><text x="1085" y="447" class="small">Brief interruptions</text><text x="1350" y="447" class="small muted">-</text>
+  <rect x="777" y="476" width="10" height="10" class="yellow"/><text x="797" y="487" class="body">Slow running, 3 min / 12 pcs eq.</text><text x="1085" y="487" class="small">Cycle above ideal</text><text x="1350" y="487" class="small muted">-</text>
+  <rect x="777" y="516" width="10" height="10" class="red"/><text x="797" y="527" class="body">Scrap, 10 pcs</text><text x="1085" y="527" class="small">Quality rejection</text><text x="1350" y="527" class="small muted">-</text>
+  <text x="777" y="566" class="small muted">Stack: 170 + 10 + 40 + 8 + 12 = 240 pcs · Achieved-rate counterfactual: 170 + 10 + 45 = 225</text>
+  <rect x="40" y="583" width="1520" height="108" fill="#159773" fill-opacity="0.04"/>
+  <text x="125" y="626" font-size="27" font-weight="700">Total</text><text x="118" y="654" class="small muted">1 illustrative hour</text>
+  <text x="289" y="626" class="body green">OK 170 / capacity 240</text><text x="289" y="651" class="small muted">Same category composition</text>
+  <text x="535" y="631" text-anchor="middle" font-size="25" font-weight="700">70.8%</text><text x="685" y="631" text-anchor="middle" font-size="25" font-weight="700">+2.0s</text>
+  <text x="779" y="624" class="body">Without scrap / stops: 225 pcs · Recoverable: +55 pcs</text><text x="779" y="651" class="small muted">Totals cover the full selected shift even when the hour list is filtered.</text>
+  <text x="40" y="722" class="small muted">Green = OK · Red = scrap · Orange = downtime · Purple = micro-stops · Yellow = slow running</text>
+  <text x="40" y="749" class="small muted">225 keeps achieved running speed; 240 assumes ideal speed. Stack equivalents use the ideal rate; recoverable output uses the achieved rate.</text>
+  <text x="40" y="784" class="small muted">Illustrative complete data. In live use, missing counts, historical rates or coverage show unavailable metrics; cycles remain distinct from OK pieces.</text>
+</svg>
