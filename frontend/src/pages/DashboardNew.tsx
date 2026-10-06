@@ -23,16 +23,9 @@ export function DashboardNew({ displayId }: { displayId: string }) {
       activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 25000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/hourly-overview${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        let next: ImprintData = await response.json();
-        // Live records come from the identical endpoint as the original hourly view.
-        // Verified MES providers additionally supply event reasons through the imprint endpoint.
-        if (next.data_source !== 'euromap63' && next.status !== 'outside_shift') {
-          const details = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
-          if (!details.ok) throw new Error(`HTTP ${details.status}`);
-          next = await details.json();
-        }
+        const next: ImprintData = await response.json();
         if (mounted) { setData(next); setOffline(false); setUpdatedAt(next.status === 'stale' && next.last_successful_update ? new Date(next.last_successful_update) : new Date()); interval = next.refresh_seconds; }
       } catch {
         if (mounted) setOffline(true);

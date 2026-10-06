@@ -54,8 +54,20 @@ export interface Shift { id: string; name: string; start_time: string; end_time:
   days: number[]; active: boolean }
 export interface Display { id: string; name: string; machine_id: string;
   dashboard_type: string; theme: 'dark' | 'light'; active: boolean; online: boolean; last_seen: string | null }
+export interface OverviewCapacity { ideal_capacity: number | null; without_scrap_or_stops: number | null; recoverable_output: number | null }
+export interface OverviewResult {
+  raw_observations: { recorded_count: number | null; stop_count: number | null; stop_seconds: number | null; declared_scrap: number | null };
+  production: { good_count: number; scrap_count: number; count_basis: string } | null;
+  composition: Record<string, { seconds: number; pieces: number | null }> | null;
+  capacity: OverviewCapacity | null;
+  efficiency: { ratio: number | null; kind: 'oee' | 'declared_output_ratio'; denominator: number | null } | null;
+  cycle: { actual_seconds: number | null; ideal_seconds: number | null; delta_seconds: number | null; basis: string } | null;
+  quality: { status: 'verified' | 'provisional' | 'insufficient_data' | 'inconsistent'; missing_inputs: string[]; warnings: string[] };
+}
+export interface OverviewPayload { hours: (OverviewResult & { start: string; end: string; elapsed_seconds: number; duration_seconds: number })[]; total: OverviewResult }
 export interface ImprintData extends Omit<DashboardData, 'hours'> {
   ticks?: string[];
+  overview?: OverviewPayload;
   hours?: Hour[];
   downtime_events?: { start: string; end: string; category: string; reason: string; comment?: string | null; seconds: number }[];
   downtime_reasons?: { category: string; reason: string; seconds: number }[];

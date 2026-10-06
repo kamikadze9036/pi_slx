@@ -8,7 +8,7 @@ const module = { exports: {} };
 const source = readFileSync(new URL('../src/hourly-model.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
 new Function('module', 'exports', compiled.outputText)(module, module.exports);
-const { buildOverviewHours, buildOverviewTotal, hourDetailSummary } = module.exports;
+const { buildOverviewHours, buildOverviewTotal, hourDetailSummary, overviewHeadline } = module.exports;
 
 function recordedData() {
   return {
@@ -92,4 +92,43 @@ test('elapsed time and stop totals remain the exact API values even when display
   assert.equal(row.elapsed, 1800);
   assert.equal(row.stopSeconds, 1801.25);
   assert.equal(row.count, 10);
+});
+
+function overviewData() {
+  const composition = {
+    good: { seconds: 2550, pieces: 170 }, scrap: { seconds: 150, pieces: 10 },
+    downtime: { seconds: 600, pieces: 40 }, microstop: { seconds: 120, pieces: 8 },
+    speed_loss: { seconds: 180, pieces: 12 }, break: { seconds: 0, pieces: null },
+  };
+  const result = { raw_observations: {}, production: { good_count: 170, scrap_count: 10 }, composition,
+    capacity: { ideal_capacity: 240, without_scrap_or_stops: 225, recoverable_output: 55 },
+    efficiency: { ratio: 170 / 240, kind: 'oee' }, cycle: { actual_seconds: 32, ideal_seconds: 30, delta_seconds: 2 },
+    quality: { status: 'verified', missing_inputs: [], warnings: [] } };
+  return {
+    server_time: '2026-10-06T07:30:00+02:00',
+    shift: { start: '2026-10-06T06:00:00+02:00', end: '2026-10-06T09:00:00+02:00' },
+    hours: [{ start: '2026-10-06T06:00:00+02:00', end: '2026-10-06T07:00:00+02:00', duration_seconds: 3600, elapsed_seconds: 3600,
+      good_count: 170, scrap_count: 10, downtime_seconds: 600 }],
+    overview: { hours: [{ ...result, start: '2026-10-06T06:00:00+02:00', end: '2026-10-06T07:00:00+02:00' }], total: result },
+  };
+}
+
+test('composition segments follow the backend in minutes and pieces; potentials are not reconstructed', () => {
+  const data = overviewData();
+  const minutes = buildOverviewHours(data, 'minutes')[0];
+  assert.deepEqual(minutes.segments.filter(item => item.key !== 'future').map(item => [item.key, item.value]),
+    [['good', 42.5], ['scrap', 2.5], ['downtime', 10], ['microstop', 2], ['speed_loss', 3]]);
+  const pieces = buildOverviewHours(data, 'pieces')[0];
+  assert.equal(pieces.segments.reduce((sum, item) => sum + item.value, 0), 240);
+  assert.equal(pieces.segments.some(item => item.key === 'future'), false);
+  const headline = overviewHeadline(buildOverviewTotal(data, [minutes], 'minutes'));
+  assert.deepEqual([headline.ok, headline.withoutLosses, headline.recoverable, headline.idealCapacity, headline.cycleDelta], [170, 225, 55, 240, 2]);
+});
+
+test('without production metrics the headline is unavailable rather than zero', () => {
+  const data = recordedData();
+  const headline = overviewHeadline(buildOverviewTotal(data, buildOverviewHours(data, 'minutes'), 'minutes'));
+  assert.equal(headline.ok, null);
+  assert.equal(headline.recoverable, null);
+  assert.equal(headline.efficiency, null);
 });

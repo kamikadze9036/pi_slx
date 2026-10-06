@@ -1,4 +1,4 @@
-import type { Hour, ImprintData } from './types';
+import type { Hour, ImprintData, OverviewResult } from './types';
 import type { HourUnit } from './HourUnit';
 
 export const hourClock = (value: string) => new Date(value).toLocaleTimeString('en-GB', {
@@ -23,13 +23,27 @@ export interface HourDetail {
   start?: string; end?: string; cavity?: number | null;
   quantity?: number;
 }
+export const compositionOrder = [
+  { key: 'good', label: 'OK pieces' }, { key: 'scrap', label: 'Declared scrap' },
+  { key: 'downtime', label: 'Stop' }, { key: 'microstop', label: 'Micro stops' },
+  { key: 'speed_loss', label: 'Slow running' }, { key: 'break', label: 'Excluded break' },
+] as const;
 export interface OverviewHour {
+  metrics?: OverviewResult | null;
   id: string; start: string; end: string; duration: number; elapsed: number;
   current: boolean; future: boolean; total?: boolean;
   count: number | null; scrap: number | null; target: number | null; oee: number | null;
   stopCount: number | null; stopSeconds: number | null;
   ideal: number | null; estimated: number | null;
   segments: HourSegment[]; details: HourDetail[]; warnings: string[];
+}
+
+export function compositionSegments(composition: NonNullable<OverviewResult['composition']>, unit: HourUnit): HourSegment[] {
+  return compositionOrder.flatMap(({ key, label }) => {
+    const part = composition[key];
+    const value = part ? unit === 'minutes' ? part.seconds / 60 : part.pieces : null;
+    return value ? [{ key, label, value }] : [];
+  });
 }
 
 const overlap = (start: string, end: string, from: string, to: string) => Math.max(0,
@@ -72,8 +86,11 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
     const hour = data.hours?.find(item => Date.parse(item.start) === at);
     const record = live?.hours.find(item => Date.parse(item.start) === at);
     const details = recordedDetails(data, start, new Date(Math.max(at, Math.min(observed, Date.parse(end)))).toISOString());
+    const metrics = data.overview?.hours.find(item => Date.parse(item.start) === at) ?? null;
     let segments: HourSegment[];
-    if (live) {
+    if (metrics?.composition) {
+      segments = compositionSegments(metrics.composition, unit);
+    } else if (live) {
       const stopped = Math.max(0, Math.min(elapsed, record?.stop_seconds ?? 0));
       segments = [{ key: 'downtime', label: 'Observed stop', value: stopped / 60 },
         { key: 'unknown', label: 'Unverified time', value: (elapsed - stopped) / 60 }];
@@ -88,7 +105,7 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
     const scrap = live ? live.scrap_declarations == null || elapsed === 0 ? null
       : live.scrap_declarations.filter(item => inside(item.time, start, end)).reduce((sum, item) => sum + item.quantity, 0)
       : hour?.scrap_count ?? null;
-    result.push({ id: start, start, end, duration, elapsed, future: elapsed === 0,
+    result.push({ metrics, id: start, start, end, duration, elapsed, future: elapsed === 0,
       current: elapsed > 0 && elapsed < duration,
       count: live ? record?.cycle_count ?? null : hour?.good_count ?? null,
       stopCount: live ? record?.stop_count ?? null : null,
@@ -100,7 +117,7 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
   return result;
 }
 
-export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[]): OverviewHour {
+export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[], unit: HourUnit = 'minutes'): OverviewHour {
   const segments = new Map<string, HourSegment>();
   for (const row of rows) for (const segment of row.segments) {
     const old = segments.get(segment.key);
@@ -111,7 +128,9 @@ export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[]): Ove
   const weightedCycle = (key: 'ideal_cycle_seconds' | 'estimated_cycle_seconds') => !cycleCount || cycleHours.some(hour => hour[key] == null)
     ? null : cycleHours.reduce((sum, hour) => sum + hour[key]! * (hour.good_count + hour.scrap_count) / (hour.pieces_per_cycle ?? 1), 0) / cycleCount;
   const live = data.live_shift;
-  return { id: 'total', start: data.shift!.start, end: data.shift!.end,
+  const metrics = data.overview?.total ?? null;
+  const composed = metrics?.composition ? compositionSegments(metrics.composition, unit) : null;
+  return { metrics, id: 'total', start: data.shift!.start, end: data.shift!.end,
     duration: rows.reduce((sum, row) => sum + row.duration, 0), elapsed: rows.reduce((sum, row) => sum + row.elapsed, 0),
     current: false, future: false, total: true,
     count: live ? live.summary.cycle_count : data.summary?.good_count ?? null,
@@ -121,7 +140,7 @@ export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[]): Ove
       : data.summary?.scrap_count ?? null,
     target: data.production?.target ?? null, oee: data.summary?.oee ?? null,
     ideal: weightedCycle('ideal_cycle_seconds'), estimated: weightedCycle('estimated_cycle_seconds'),
-    segments: [...segments.values()], details: rows.flatMap(row => row.details), warnings: data.summary?.warnings ?? [] };
+    segments: composed ?? [...segments.values()], details: rows.flatMap(row => row.details), warnings: data.summary?.warnings ?? [] };
 }
 
 export function hourDetailSummary(row: OverviewHour, live: boolean, unit: HourUnit): HourDetail[] {
@@ -144,4 +163,13 @@ export function hourDetailSummary(row: OverviewHour, live: boolean, unit: HourUn
   const knownKeys = new Set([...grouped.values()].map(detail => detail.key));
   return [...(live ? [{ key: 'good', label: 'Recorded count', amount: hourNumber(row.count), reason: '—' }] : []),
     ...details.filter(detail => !knownKeys.has(detail.key) || detail.key === 'scrap'), ...grouped.values()];
+}
+
+/** Headline values above the table; null means unavailable, never zero. */
+export function overviewHeadline(total: OverviewHour) {
+  const m = total.metrics;
+  return { ok: m?.production?.good_count ?? null, withoutLosses: m?.capacity?.without_scrap_or_stops ?? null,
+    recoverable: m?.capacity?.recoverable_output ?? null, idealCapacity: m?.capacity?.ideal_capacity ?? null,
+    efficiency: m?.efficiency?.ratio ?? null, efficiencyKind: m?.efficiency?.kind ?? null,
+    cycleDelta: m?.cycle?.delta_seconds ?? null, missing: m?.quality.missing_inputs ?? [] };
 }

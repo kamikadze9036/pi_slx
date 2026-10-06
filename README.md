@@ -43,16 +43,13 @@ The admin page also controls the dashboard refresh interval, visible summary KPI
 
 The original hourly display remains at `/display/{id}/hourly` and stays the default for `production-efficiency` displays. The separate **New hourly overview** is at `/display/{id}/hourly-new`, with links from the original hourly view and shift imprint. It can be selected explicitly as dashboard type `hourly-new` in Admin; existing display settings are not changed.
 
-The new hourly display uses the uploaded whiteboard layout and the application's dark and light palettes, with English controls, hourly rows, event reasons, source comments, and a full-shift total. In Euromap63 mode it reads the same dashboard endpoint and exact server intervals as the original view. Green cycle/count bars, orange stop-time bars and red declared-scrap bars use the original view's scales. Prominent hourly and shift values show recorded counts, observed stop counts, observed stop time and declared scrap; distinct shift stop totals come from the API summary rather than summing events repeated across hourly boundaries. Future hours are not inferred. Hour details expand to show timestamped stop and scrap events. Search filters hourly rows while the total always covers the entire shift.
+The new hourly display follows the uploaded whiteboard layout in the application's dark and light palettes, with English controls, hourly rows, event reasons, source comments and a full-shift total. It reads `GET /api/displays/{id}/hourly-overview`, which returns the same payload as the original dashboard/imprint (identical intervals, cycles, stops and declared scrap) plus an `overview` block with per-hour and total production-loss metrics from `backend/app/services/hourly_loss.py`. Future hours are not inferred; search filters rows while the total always covers the shift.
 
-Verified MES providers additionally supply event reasons through the imprint endpoint and retain category composition, OEE and calculated/ideal cycle gauges. The minutes/pieces preference persists separately from the original display. The calculated cycle is productive runtime × pieces per cycle / total pieces, not individually measured cycle history. Source comments are read-only; optional `comment` fields from event/report queries or Euromap63 observations are passed through. Unavailable values remain unavailable, rather than implying zero or inventing production/OEE.
+Where verified OK/scrap counts and an effective ideal cycle exist (mock and Ciclades providers), each row shows one shared output/loss composition (OK, scrap, stops, micro-stops, slow running, excluded breaks) in minutes or pieces (preference stored separately as `hourly-new-unit`), an output-efficiency ring (`OK / ideal capacity`, values above 100% kept), and a calculated actual/ideal cycle difference. Headline values are OK pieces, *without scrap / stops* (OK + scrap + stopped time at the achieved running rate, a calculated counterfactual), recoverable output and ideal capacity. The ratio is labelled OEE only for the simulated provider; otherwise it is a declared-output ratio.
 
-The proposed next revision, including the PDF-style composition, OK pieces,
-recoverable output, two distinct capacity definitions, source-data gaps and
-implementation handoff, is documented in
-[docs/hourly-new-pdf-proposal.md](docs/hourly-new-pdf-proposal.md), with an
-[illustrative wireframe](docs/hourly-new-wireframe.svg). This proposal is not
-yet implemented or deployed.
+In Euromap63 mode verified hourly OK pieces and historical ideal cycles are not available from the source (see the proposal's source limitations), so these metrics are null, the page says which inputs are missing, and only recorded cycles/counter increase, observed stops, stop time and declared scrap are shown. Cycles are never reported as OK pieces. The backend calculation is covered by tests including the proposal's worked example; the Euromap63 inputs required for verified KPIs remain open.
+
+Design and open questions: [docs/hourly-new-pdf-proposal.md](docs/hourly-new-pdf-proposal.md), with an [illustrative wireframe](docs/hourly-new-wireframe.svg).
 
 ## Configuration
 
