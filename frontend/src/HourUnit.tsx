@@ -1,9 +1,7 @@
 import { useState } from 'react';
 
 export type HourUnit = 'minutes' | 'pieces';
-const storageKey = 'imprint-hour-unit';
-
-export function useHourUnit(): [HourUnit, (unit: HourUnit) => void] {
+export function useHourUnit(storageKey = 'imprint-hour-unit'): [HourUnit, (unit: HourUnit) => void] {
   const [unit, setUnit] = useState<HourUnit>(() => {
     try { return window.localStorage.getItem(storageKey) === 'pieces' ? 'pieces' : 'minutes'; }
     catch { return 'minutes'; }

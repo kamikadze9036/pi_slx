@@ -151,7 +151,8 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
             continue
         events.append({"start": begin.isoformat(), "end": finish.isoformat(),
                        "seconds": utc_seconds(begin, finish),
-                       "reason": str(row.get("reason") or "Unclassified stop")})
+                       "reason": str(row.get("reason") or "Unclassified stop"),
+                       **({"comment": row["comment"]} if isinstance(row.get("comment"), str) else {})})
     events.sort(key=lambda item: item["start"])
 
     cavity_rows, cavity_by_product, cavity_order = [], {}, None
@@ -192,7 +193,8 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                                  "product": row.get("product"),
                                  # Cavity numbers are only valid for the order they were read for
                                  "cavity_no": cavity_by_product.get(row.get("product"))
-                                 if row.get("order_ref") in (None, cavity_order) else None})
+                                 if row.get("order_ref") in (None, cavity_order) else None,
+                                 **({"comment": row["comment"]} if isinstance(row.get("comment"), str) else {})})
         declarations.sort(key=lambda item: item["time"])
 
     cycle_times = []

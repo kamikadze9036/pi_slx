@@ -1,0 +1,139 @@
+import type { Hour, ImprintData } from './types';
+import type { HourUnit } from './HourUnit';
+
+export const hourClock = (value: string) => new Date(value).toLocaleTimeString('cs-CZ', {
+  timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit'
+});
+export const hourNumber = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 1 }).format(value);
+export const hourDuration = (seconds: number) => seconds < 60 ? `${hourNumber(Math.round(seconds))} s` : `${hourNumber(seconds / 60)} min`;
+
+export const lossCategories = [
+  { key: 'good', seconds: 'good_seconds', label: 'Dobrá výroba' },
+  { key: 'speed_loss', seconds: 'speed_loss_seconds', label: 'Pomalý běh' },
+  { key: 'microstop', seconds: 'microstop_seconds', label: 'Mikrozastavení' },
+  { key: 'downtime', seconds: 'downtime_seconds', label: 'Prostoj' },
+  { key: 'break', seconds: 'excluded_break_seconds', label: 'Přestávka' },
+  { key: 'scrap', seconds: 'scrap_loss_seconds', label: 'Zmetky' },
+  { key: 'unknown', seconds: 'unknown_seconds', label: 'Neověřený čas' },
+] as const;
+export interface HourSegment { key: string; label: string; value: number }
+export interface HourDetail {
+  key: string; label: string; amount: string; reason: string; comment?: string;
+  start?: string; end?: string; cavity?: number | null;
+  quantity?: number;
+}
+export interface OverviewHour {
+  id: string; start: string; end: string; duration: number; elapsed: number;
+  current: boolean; future: boolean; total?: boolean;
+  count: number | null; scrap: number | null; target: number | null; oee: number | null;
+  ideal: number | null; estimated: number | null;
+  segments: HourSegment[]; details: HourDetail[]; warnings: string[];
+}
+
+const overlap = (start: string, end: string, from: string, to: string) => Math.max(0,
+  (Math.min(Date.parse(end), Date.parse(to)) - Math.max(Date.parse(start), Date.parse(from))) / 1000);
+const inside = (at: string, from: string, to: string) => Date.parse(at) >= Date.parse(from) && Date.parse(at) < Date.parse(to);
+
+function recordedDetails(data: ImprintData, start: string, end: string): HourDetail[] {
+  const live = data.live_shift;
+  const events = live?.downtime_events ?? data.downtime_events ?? [];
+  const stops = events.flatMap(event => {
+    const seconds = overlap(event.start, event.end, start, end);
+    if (!seconds) return [];
+    return [{ key: 'category' in event && event.category === 'micro_stop' ? 'microstop' : 'downtime',
+      label: 'category' in event && event.category === 'micro_stop' ? 'Mikrozastavení' : 'Prostoj',
+      amount: hourDuration(seconds), reason: event.reason, comment: event.comment ?? undefined,
+      start: new Date(Math.max(Date.parse(start), Date.parse(event.start))).toISOString(),
+      end: new Date(Math.min(Date.parse(end), Date.parse(event.end))).toISOString() }];
+  });
+  const scrap: HourDetail[] = live ? (live.scrap_declarations ?? []).filter(item => inside(item.time, start, end)).map(item => ({
+    key: 'scrap', label: 'Hlášené zmetky', amount: `${hourNumber(item.quantity)} ks`, reason: item.reason,
+    start: item.time, cavity: item.cavity_no, quantity: item.quantity, comment: item.comment ?? undefined,
+  })) : (data.scrap_reports ?? []).filter(item => inside(item.at, start, end)).map(item => ({
+    key: 'scrap', label: 'Hlášené zmetky', amount: `${hourNumber(item.count)} ks`, reason: item.reason, start: item.at, quantity: item.count, comment: item.comment ?? undefined,
+  }));
+  return [...stops, ...scrap].sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!));
+}
+
+export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewHour[] {
+  const shift = data.shift!;
+  const live = data.live_shift;
+  const observed = Math.min(Date.parse(data.server_time), Date.parse(shift.end));
+  const result: OverviewHour[] = [];
+  // Advance in elapsed hours, including both occurrences of the repeated DST hour.
+  for (let at = Date.parse(shift.start); at < Date.parse(shift.end); at += 3600000) {
+    const start = new Date(at).toISOString();
+    const end = new Date(Math.min(at + 3600000, Date.parse(shift.end))).toISOString();
+    const duration = (Date.parse(end) - at) / 1000;
+    const elapsed = Math.max(0, Math.min(duration, (observed - at) / 1000));
+    const hour = data.hours?.find(item => Date.parse(item.start) === at);
+    const record = live?.hours.find(item => Date.parse(item.start) === at);
+    const details = recordedDetails(data, start, new Date(Math.max(at, Math.min(observed, Date.parse(end)))).toISOString());
+    let segments: HourSegment[];
+    if (live) {
+      const stopped = Math.max(0, Math.min(elapsed, record?.stop_seconds ?? 0));
+      segments = [{ key: 'downtime', label: 'Pozorovaný prostoj', value: stopped / 60 },
+        { key: 'unknown', label: 'Neověřený čas', value: (elapsed - stopped) / 60 }];
+    } else if (hour) {
+      segments = lossCategories.map(category => ({ key: category.key, label: category.label,
+        value: unit === 'minutes' ? Number(hour[category.seconds as keyof Hour]) / 60
+          : hour.piece_equivalents?.[category.key] ?? 0 }));
+    } else {
+      segments = [{ key: 'unknown', label: 'Neověřený čas', value: unit === 'minutes' ? elapsed / 60 : 0 }];
+    }
+    if (unit === 'minutes' || live) segments.push({ key: 'future', label: 'Budoucí čas', value: (duration - elapsed) / 60 });
+    const scrap = live ? live.scrap_declarations == null || elapsed === 0 ? null
+      : live.scrap_declarations.filter(item => inside(item.time, start, end)).reduce((sum, item) => sum + item.quantity, 0)
+      : hour?.scrap_count ?? null;
+    result.push({ id: start, start, end, duration, elapsed, future: elapsed === 0,
+      current: elapsed > 0 && elapsed < duration,
+      count: live ? record?.cycle_count ?? null : hour?.good_count ?? null,
+      scrap, target: hour?.target_good ?? null, oee: hour?.oee ?? null,
+      ideal: hour?.ideal_cycle_seconds ?? null, estimated: hour?.estimated_cycle_seconds ?? null,
+      segments: segments.filter(segment => segment.value > 0), details, warnings: hour?.warnings ?? [] });
+  }
+  return result;
+}
+
+export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[]): OverviewHour {
+  const segments = new Map<string, HourSegment>();
+  for (const row of rows) for (const segment of row.segments) {
+    const old = segments.get(segment.key);
+    segments.set(segment.key, { ...segment, value: (old?.value ?? 0) + segment.value });
+  }
+  const cycleHours = (data.hours ?? []).filter(hour => hour.good_count + hour.scrap_count > 0);
+  const cycleCount = cycleHours.reduce((sum, hour) => sum + (hour.good_count + hour.scrap_count) / (hour.pieces_per_cycle ?? 1), 0);
+  const weightedCycle = (key: 'ideal_cycle_seconds' | 'estimated_cycle_seconds') => !cycleCount || cycleHours.some(hour => hour[key] == null)
+    ? null : cycleHours.reduce((sum, hour) => sum + hour[key]! * (hour.good_count + hour.scrap_count) / (hour.pieces_per_cycle ?? 1), 0) / cycleCount;
+  const live = data.live_shift;
+  return { id: 'total', start: data.shift!.start, end: data.shift!.end,
+    duration: rows.reduce((sum, row) => sum + row.duration, 0), elapsed: rows.reduce((sum, row) => sum + row.elapsed, 0),
+    current: false, future: false, total: true,
+    count: live ? live.summary.cycle_count : data.summary?.good_count ?? null,
+    scrap: live ? live.scrap_declarations == null ? null : live.scrap_declarations.reduce((sum, item) => sum + item.quantity, 0)
+      : data.summary?.scrap_count ?? null,
+    target: data.production?.target ?? null, oee: data.summary?.oee ?? null,
+    ideal: weightedCycle('ideal_cycle_seconds'), estimated: weightedCycle('estimated_cycle_seconds'),
+    segments: [...segments.values()], details: rows.flatMap(row => row.details), warnings: data.summary?.warnings ?? [] };
+}
+
+export function hourDetailSummary(row: OverviewHour, live: boolean, unit: HourUnit): HourDetail[] {
+  const details: HourDetail[] = row.segments.filter(segment => segment.key !== 'future').map(segment => ({
+    key: segment.key, label: segment.label,
+    amount: unit === 'minutes' || live ? hourDuration(segment.value * 60) : `${hourNumber(segment.value)} ${['good', 'scrap'].includes(segment.key) ? 'ks' : 'ks ekv.'}`,
+    reason: segment.key === 'unknown' ? 'Stav v tomto čase není ověřen' : '—',
+  }));
+  // Keep verified event reasons together without duplicating category totals.
+  const grouped = new Map<string, HourDetail>();
+  for (const detail of row.details) {
+    const id = JSON.stringify([detail.key, detail.reason, detail.comment ?? '']);
+    if (!grouped.has(id)) grouped.set(id, { ...detail, amount: '', start: undefined, end: undefined });
+  }
+  for (const item of grouped.values()) {
+    const same = row.details.filter(detail => detail.key === item.key && detail.reason === item.reason && detail.comment === item.comment);
+    if (item.key === 'scrap') item.amount = `${hourNumber(same.reduce((sum, detail) => sum + (detail.quantity ?? 0), 0))} ks`;
+    else item.amount = hourDuration(same.reduce((sum, detail) => sum + (Date.parse(detail.end!) - Date.parse(detail.start!)) / 1000, 0));
+  }
+  const knownKeys = new Set([...grouped.values()].map(detail => detail.key));
+  return [...details.filter(detail => !knownKeys.has(detail.key) || detail.key === 'scrap'), ...grouped.values()];
+}

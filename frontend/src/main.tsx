@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Dashboard } from './pages/Dashboard';
+import { DashboardNew } from './pages/DashboardNew';
 import { ShiftImprint } from './pages/ShiftImprint';
 import { Admin } from './pages/Admin';
 import { Fleet } from './pages/Fleet';
@@ -13,9 +14,10 @@ import './light.css';
 import './fleet.css';
 import './shift-navigation.css';
 import './euromap-shift.css';
+import './hourly-overview.css';
 
 const path = window.location.pathname;
-const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly))?/);
+const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly-new|hourly))?/);
 
 function ConfiguredDisplay({ displayId }: { displayId: string }) {
   const [type, setType] = useState<string | null>(null);
@@ -30,11 +32,12 @@ function ConfiguredDisplay({ displayId }: { displayId: string }) {
     return () => { controller.abort(); clearTimeout(timeout); };
   }, [displayId]);
   if (type === null) return <main className="empty-state"><span className="eyebrow">PRODUCTION EFFICIENCY</span><h1>Loading display…</h1></main>;
-  return type === 'shift-imprint' ? <ShiftImprint displayId={displayId} /> : <Dashboard displayId={displayId} />;
+  return type === 'shift-imprint' ? <ShiftImprint displayId={displayId} /> : type === 'hourly-new' ? <DashboardNew displayId={displayId} /> : <Dashboard displayId={displayId} />;
 }
 
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>{path.startsWith('/admin') ? <Admin /> : path.startsWith('/fleet') ? <Fleet /> : match?.[2] === 'imprint' ? <ShiftImprint displayId={match[1]} />
+    : match?.[2] === 'hourly-new' ? <DashboardNew displayId={match[1]} />
     : match?.[2] === 'hourly' ? <Dashboard displayId={match[1]} />
     : <ConfiguredDisplay displayId={match?.[1] || 'demo'} />}</React.StrictMode>
 );

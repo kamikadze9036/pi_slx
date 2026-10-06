@@ -5,6 +5,7 @@ export interface Hour {
   excluded_break_seconds: number; good_count: number; scrap_count: number;
   target_good: number | null; oee: number | null; performance: number | null;
   status: string; warnings: string[]; current: boolean;
+  ideal_cycle_seconds?: number | null; estimated_cycle_seconds?: number | null; pieces_per_cycle?: number;
   piece_equivalents?: { good: number; speed_loss: number; microstop: number;
     downtime: number; break: number; scrap: number; unknown: number } | null;
 }
@@ -36,8 +37,8 @@ export interface DashboardData {
     hours: { start: string; end: string; elapsed_seconds: number; cycle_count: number | null;
       stop_seconds: number | null; stop_count: number | null }[];
     cycle_bins: { start: string; count: number }[];
-    downtime_events: { start: string; end: string; seconds: number; reason: string }[];
-    scrap_declarations: { time: string; quantity: number; reason: string; product: string | null; cavity_no: number | null }[] | null;
+    downtime_events: { start: string; end: string; seconds: number; reason: string; comment?: string | null }[];
+    scrap_declarations: { time: string; quantity: number; reason: string; comment?: string | null; product: string | null; cavity_no: number | null }[] | null;
     cavities?: { order_ref: string | null; rows: { cavity_no: number; product: string; label: string | null;
       qty_good: number | null; qty_reject: number | null; reject_pct: number | null; target_pct: number | null;
       shift_made: number | null; shift_reject: number | null; shift_reject_pct: number | null }[];
@@ -56,9 +57,9 @@ export interface Display { id: string; name: string; machine_id: string;
 export interface ImprintData extends Omit<DashboardData, 'hours'> {
   ticks?: string[];
   hours?: Hour[];
-  downtime_events?: { start: string; end: string; category: string; reason: string; seconds: number }[];
+  downtime_events?: { start: string; end: string; category: string; reason: string; comment?: string | null; seconds: number }[];
   downtime_reasons?: { category: string; reason: string; seconds: number }[];
-  scrap_reports?: { at: string; count: number; reason: string }[];
+  scrap_reports?: { at: string; count: number; reason: string; comment?: string | null }[];
   scrap_reasons?: { reason: string; count: number }[];
   downtime_detail_available?: boolean;
   scrap_detail_available?: boolean;

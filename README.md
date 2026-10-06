@@ -41,7 +41,9 @@ The admin page also controls the dashboard refresh interval, visible summary KPI
 - MES snapshots are cached for five seconds per machine and shift. When the source fails, the last valid snapshot is returned as stale and the display shows a connection warning.
 - Admin settings reside in PostgreSQL; MES production history is not copied there.
 
-The display uses one contiguous segment per loss category. Segments are aggregated by type, not placed in event chronology. Future time in the current hour remains dark and is excluded from KPI calculations. An unavailable ideal cycle produces `insufficient_data` and an unknown segment instead of invented OEE.
+The original hourly display remains at `/display/{id}/hourly` and stays the default for `production-efficiency` displays. The separate **Hodinový přehled nový** is at `/display/{id}/hourly-new`, with links from the original hourly view and shift imprint. It can be selected explicitly as dashboard type `hourly-new` in Admin; existing display settings are not changed.
+
+The new hourly display follows the uploaded whiteboard layout in the application's dark and light palettes: one row per shift hour, vertical category composition, OEE and cycle gauges, loss types, reasons, source comments, and a full-shift total. Hour details expand to show timestamped stop and scrap events. Search filters hourly rows while the total always covers the entire shift. Its minutes/pieces preference persists separately from the original display. Future hours are visible and excluded from KPI calculations. Cycle gauges compare a calculated average (productive runtime × pieces per cycle / total pieces) with the ideal cycle; they do not claim individually measured cycle history. In Euromap63 mode, unavailable hourly OEE and cycle history remain blank, and time outside observed stops is explicitly unverified. Source comments are read-only; optional `comment` fields from event/report queries or Euromap63 observations are passed through. An unavailable ideal cycle produces `insufficient_data` and an unknown segment instead of invented OEE.
 
 ## Configuration
 

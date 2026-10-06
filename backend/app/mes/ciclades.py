@@ -37,7 +37,7 @@ class CicladesSqlServerProvider:
                              float(row["downtime_seconds"]), float(row.get("microstop_seconds") or 0),
                              float(row["ideal_cycle_seconds"]) if row.get("ideal_cycle_seconds") is not None else None)
              for row in rows],
-            [DowntimeEvent(row["start"], row["end"], str(row["category"]), str(row["reason"]))
+            [DowntimeEvent(row["start"], row["end"], str(row["category"]), str(row["reason"]), row.get("comment"))
              for row in downtime_rows],
-            [ScrapReport(row["at"], int(row["count"]), str(row["reason"])) for row in scrap_rows],
+            [ScrapReport(row["at"], int(row["count"]), str(row["reason"]), row.get("comment")) for row in scrap_rows],
             bool(self.downtime_sql), bool(self.scrap_sql))

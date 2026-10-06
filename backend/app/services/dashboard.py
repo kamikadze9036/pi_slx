@@ -71,6 +71,11 @@ def build_dashboard(display: Display, machine: Machine, shifts: list[Shift], now
                       "excluded_break_seconds": result.excluded_break_seconds,
                       "good_count": good, "scrap_count": scrap,
                       "piece_equivalents": piece_equivalents,
+                      "ideal_cycle_seconds": ideal_cycle,
+                      "estimated_cycle_seconds": ((result.planned_seconds - result.downtime_seconds
+                                                    - result.microstop_seconds) * machine.pieces_per_cycle
+                                                   / (good + scrap)) if good + scrap > 0 else None,
+                      "pieces_per_cycle": machine.pieces_per_cycle,
                       "target_good": round(snapshot.target_per_hour * elapsed / 3600) if snapshot.target_per_hour is not None else None,
                       "oee": result.oee, "performance": result.performance,
                       "status": result.status, "warnings": result.warnings,

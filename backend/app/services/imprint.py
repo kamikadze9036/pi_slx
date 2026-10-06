@@ -24,7 +24,8 @@ def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: 
             continue
         seconds = utc_seconds(begin, finish)
         events.append({"start": begin.isoformat(), "end": finish.isoformat(),
-                       "category": event.category, "reason": event.reason, "seconds": seconds})
+                       "category": event.category, "reason": event.reason, "seconds": seconds,
+                       **({"comment": event.comment} if event.comment else {})})
         label = (event.category, event.reason)
         reasons[label] = reasons.get(label, 0) + seconds
     reports = []
@@ -34,7 +35,8 @@ def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: 
             continue
         if item.at.astimezone(timezone.utc) > elapsed_end or item.at.astimezone(timezone.utc) < start.astimezone(timezone.utc):
             continue
-        reports.append({"at": item.at.isoformat(), "count": item.count, "reason": item.reason})
+        reports.append({"at": item.at.isoformat(), "count": item.count, "reason": item.reason,
+                        **({"comment": item.comment} if item.comment else {})})
         scrap_reasons[item.reason] = scrap_reasons.get(item.reason, 0) + item.count
     unclassified = dashboard["summary"]["scrap_count"] - sum(scrap_reasons.values())
     if unclassified > 0:
@@ -43,6 +45,7 @@ def build_imprint(display: Display, machine: Machine, shifts: list[Shift], now: 
         "status": dashboard["status"], "server_time": dashboard["server_time"],
         "last_successful_update": dashboard["last_successful_update"],
         "refresh_seconds": dashboard["refresh_seconds"], "data_source": dashboard["data_source"],
+        "display_settings": dashboard["display_settings"],
         "display": dashboard["display"], "machine": dashboard["machine"],
         "shift": dashboard["shift"], "shift_navigation": dashboard["shift_navigation"],
         "production": dashboard["production"],

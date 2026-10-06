@@ -17,12 +17,14 @@ class DowntimeEvent:
     end: datetime
     category: str
     reason: str
+    comment: str | None = None
 
 @dataclass(frozen=True)
 class ScrapReport:
     at: datetime
     count: int
     reason: str
+    comment: str | None = None
 
 @dataclass(frozen=True)
 class MesSnapshot:

@@ -116,7 +116,7 @@ export function Dashboard({ displayId }: { displayId: string }) {
       <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : `${data.shift_navigation?.is_current ? 'CURRENT SHIFT' : 'HISTORICAL SHIFT'} · ${data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES DATA'}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div>
     </header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><span className="selected">HOURLY LOSSES</span><a href={displayLink(`/display/${encodeURIComponent(displayId)}/imprint`)}>SHIFT IMPRINT ↗</a></nav>
+    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><span className="selected">HOURLY LOSSES</span><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly-new`)}>HODINOVÝ PŘEHLED NOVÝ ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/imprint`)}>SHIFT IMPRINT ↗</a></nav>
     {stale && <div className="stale-banner">Showing last available data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
     <ShiftNavigator displayId={displayId} view="hourly" shift={data.shift!} navigation={data.shift_navigation!} />
     <section className="headline">
