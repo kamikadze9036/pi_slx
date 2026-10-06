@@ -40,7 +40,8 @@ export interface DashboardData {
     scrap_declarations: { time: string; quantity: number; reason: string; product: string | null; cavity_no: number | null }[] | null;
     cavities?: { order_ref: string | null; rows: { cavity_no: number; product: string; label: string | null;
       qty_good: number | null; qty_reject: number | null; reject_pct: number | null; target_pct: number | null;
-      shift_made: number | null; shift_reject: number | null; shift_reject_pct: number | null }[] };
+      shift_made: number | null; shift_reject: number | null; shift_reject_pct: number | null }[];
+      shift_total?: { made: number; reject: number; reject_pct: number } | null };
     summary: { cycle_count: number | null; observed_stop_seconds: number | null;
       observed_stop_count: number | null };
   };

@@ -85,8 +85,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     const total = [...reasons.values()].reduce((sum, quantity) => sum + quantity, 0);
     return { total, title: [`${number(total)} pcs declared`, ...[...reasons].sort((a, b) => b[1] - a[1]).map(([label, quantity]) => `${label}: ${number(quantity)} pcs`)].join('\n') };
   };
-  const shiftMade = cavityRows.reduce((sum, row) => sum + (row.shift_made ?? 0), 0);
-  const shiftRatePct = shiftMade > 0 ? cavityRows.reduce((sum, row) => sum + (row.shift_reject ?? 0), 0) / shiftMade * 100 : null;
+  const shiftRatePct = live.cavities?.shift_total?.reject_pct ?? null;
   const maxHourScrap = Math.max(1, ...live.hours.map(hour => hourScrap(hour)?.total ?? 0));
   let worstCavity: number | null = null, worstPct = -1;
   for (const row of cavityRows) if (row.shift_reject_pct != null && row.shift_reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.shift_reject_pct; }

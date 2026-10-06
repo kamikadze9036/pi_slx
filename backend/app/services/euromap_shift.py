@@ -155,10 +155,16 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     events.sort(key=lambda item: item["start"])
 
     cavity_rows, cavity_by_product, cavity_order = [], {}, None
+    shift_total = None
     if cavity_data is not None:
         cavity_order = cavity_data.get("order_ref")
         shift_products = {row["product"]: row for row in cavity_data.get("shift_products", [])
                           if isinstance(row, dict) and row.get("product")}
+        # Sum over every product of the shift, not only the cavities of the machine's current order
+        made = sum(row.get("qty_made") or 0 for row in shift_products.values())
+        reject = sum(row.get("qty_reject") or 0 for row in shift_products.values())
+        if made > 0:
+            shift_total = {"made": made, "reject": reject, "reject_pct": round(reject / made * 100, 2)}
         for row in cavity_data["cavities"]:
             number = row.get("cavity_no") if isinstance(row, dict) else None
             if isinstance(number, bool) or not isinstance(number, int) or not row.get("product"):
@@ -265,7 +271,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "hours": hours, "cycle_bins": bins,
                            "downtime_events": events,
                            "scrap_declarations": declarations,
-                           "cavities": {"order_ref": cavity_order, "rows": cavity_rows},
+                           "cavities": {"order_ref": cavity_order, "rows": cavity_rows, "shift_total": shift_total},
                            "summary": {"cycle_count": len(cycle_times) if cycle_times else
                                        sum(item["count"] for item in counter_intervals) if counter_intervals else None,
                                        "observed_stop_seconds": sum(item["seconds"] for item in events)
