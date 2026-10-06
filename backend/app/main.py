@@ -13,6 +13,7 @@ from app.db.models import AppSetting, AuditLog, Display, Machine, Shift
 from app.db.session import SessionLocal, get_db
 from app.services.dashboard import build_dashboard
 from app.services.euromap_shift import build_euromap_shift
+from app.services.hourly_overview import build_hourly_overview
 from app.services.imprint import build_imprint
 from app.services.fleet import build_fleet
 from app.services.shifts import InvalidShiftSelection, active_shift
@@ -154,6 +155,22 @@ def shift_imprint(display_id: str, shift_start: datetime | None = None, db: Sess
         raise HTTPException(422, str(exc)) from exc
     except Exception:
         log.exception("shift imprint calculation failed display=%s", display_id)
+        raise HTTPException(503, "MES data unavailable")
+
+@app.get("/api/displays/{display_id}/hourly-overview")
+def hourly_overview(display_id: str, shift_start: datetime | None = None, db: Session = Depends(get_db)):
+    display = display_or_404(db, display_id)
+    machine = machine_or_404(db, display.machine_id)
+    if not machine.active:
+        raise HTTPException(404, "Machine disabled")
+    try:
+        builder = build_euromap_shift if settings.mes_provider == "euromap63" else build_imprint
+        return build_hourly_overview(builder, display, machine, list(db.scalars(select(Shift).where(Shift.active))),
+                                     datetime.now(timezone.utc), dashboard_settings(db), shift_start)
+    except InvalidShiftSelection as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception:
+        log.exception("hourly overview calculation failed display=%s", display_id)
         raise HTTPException(503, "MES data unavailable")
 
 @app.get("/api/machines", response_model=list[MachineOut])
