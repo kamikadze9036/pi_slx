@@ -112,7 +112,7 @@ export function ShiftImprint({ displayId }: { displayId: string }) {
       <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : `${data.shift_navigation?.is_current ? 'CURRENT SHIFT' : 'HISTORICAL SHIFT'} · ${data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES DATA'}`}</div>
       <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div>
     </header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly`)}>HOURLY LOSSES ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly-new`)}>HODINOVÝ PŘEHLED NOVÝ ↗</a><span className="selected">SHIFT IMPRINT</span></nav>
+    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly`)}>HOURLY LOSSES ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly-new`)}>NEW HOURLY OVERVIEW ↗</a><span className="selected">SHIFT IMPRINT</span></nav>
     {stale && <div className="stale-banner">Showing last available data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
     <ShiftNavigator displayId={displayId} view="imprint" shift={shift} navigation={data.shift_navigation!} />
     <section className="imprint-head"><div><span className="eyebrow">SHIFT IMPRINT <span className="slash">/</span> {data.display.id.toUpperCase()}</span>

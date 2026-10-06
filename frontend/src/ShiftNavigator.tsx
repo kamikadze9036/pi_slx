@@ -44,7 +44,7 @@ export function ShiftNavigator({ displayId, view, shift, navigation, language = 
   language?: 'en' | 'cs';
 }) {
   const path = `/display/${encodeURIComponent(displayId)}/${view}`;
-  const date = new Date(shift.start).toLocaleDateString('cs-CZ', {
+  const date = new Date(shift.start).toLocaleDateString(language === 'cs' ? 'cs-CZ' : 'en-GB', {
     timeZone: 'Europe/Prague', weekday: 'short', day: 'numeric', month: 'numeric', year: 'numeric'
   });
   const time = (value: string) => new Date(value).toLocaleTimeString('cs-CZ', { timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit' });

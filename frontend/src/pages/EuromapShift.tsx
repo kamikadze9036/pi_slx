@@ -103,7 +103,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a>
       {view === 'hourly' ? <span className="selected">HOURLY RECORDS</span>
         : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly`)}>HOURLY RECORDS ↗</a>}
-      <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly-new`)}>HODINOVÝ PŘEHLED NOVÝ ↗</a>
+      <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly-new`)}>NEW HOURLY OVERVIEW ↗</a>
       {view === 'imprint' ? <span className="selected">SHIFT IMPRINT</span>
         : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/imprint`)}>SHIFT IMPRINT ↗</a>}</nav>
       <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'EUROMAP63 CONNECTION LOST' : 'EUROMAP63 · RECORDED DATA'}</div>

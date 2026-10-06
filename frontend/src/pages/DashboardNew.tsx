@@ -23,9 +23,16 @@ export function DashboardNew({ displayId }: { displayId: string }) {
       activeController = controller;
       const timeout = setTimeout(() => controller.abort(), 25000);
       try {
-        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
+        const response = await fetch(`/api/displays/${encodeURIComponent(displayId)}/dashboard${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const next: ImprintData = await response.json();
+        let next: ImprintData = await response.json();
+        // Live records come from the identical endpoint as the original hourly view.
+        // Verified MES providers additionally supply event reasons through the imprint endpoint.
+        if (next.data_source !== 'euromap63' && next.status !== 'outside_shift') {
+          const details = await fetch(`/api/displays/${encodeURIComponent(displayId)}/shift-imprint${shiftApiQuery(shiftStart)}`, { signal: controller.signal });
+          if (!details.ok) throw new Error(`HTTP ${details.status}`);
+          next = await details.json();
+        }
         if (mounted) { setData(next); setOffline(false); setUpdatedAt(next.status === 'stale' && next.last_successful_update ? new Date(next.last_successful_update) : new Date()); interval = next.refresh_seconds; }
       } catch {
         if (mounted) setOffline(true);
@@ -45,7 +52,7 @@ export function DashboardNew({ displayId }: { displayId: string }) {
     return () => { mounted = false; activeController?.abort(); clearTimeout(timer); clearInterval(clockTimer); clearInterval(beatTimer); };
   }, [displayId, shiftStart]);
 
-  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'Spojení přerušeno' : 'Načítám hodinový přehled…'}</h1><p>{offline ? 'Automaticky obnovuji spojení' : `Displej ${displayId}`}</p></main>;
-  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>Mimo plánovanou směnu</h1><p>Čekám na další nastavenou směnu</p></main>;
+  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading hourly overview…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
+  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
   return <HourlyOverview data={data} offline={offline} updatedAt={updatedAt} now={now} />;
 }
