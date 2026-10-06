@@ -85,6 +85,8 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     const total = [...reasons.values()].reduce((sum, quantity) => sum + quantity, 0);
     return { total, title: [`${number(total)} pcs declared`, ...[...reasons].sort((a, b) => b[1] - a[1]).map(([label, quantity]) => `${label}: ${number(quantity)} pcs`)].join('\n') };
   };
+  const shiftMade = cavityRows.reduce((sum, row) => sum + (row.shift_made ?? 0), 0);
+  const shiftRatePct = shiftMade > 0 ? cavityRows.reduce((sum, row) => sum + (row.shift_reject ?? 0), 0) / shiftMade * 100 : null;
   const maxHourScrap = Math.max(1, ...live.hours.map(hour => hourScrap(hour)?.total ?? 0));
   let worstCavity: number | null = null, worstPct = -1;
   for (const row of cavityRows) if (row.shift_reject_pct != null && row.shift_reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.shift_reject_pct; }
@@ -169,7 +171,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       {live.downtime_events.length ? <div className="real-stop-list">{live.downtime_events.map((event, index) => <div key={`${event.start}-${index}`}>
         <span>{clock(event.start)}–{clock(event.end)}</span><strong>{event.reason}</strong><b>{minutes(event.seconds)}</b></div>)}</div>
         : <p className="real-shift-help">No stop intervals returned for this shift. This does not confirm uninterrupted production.</p>}</section>
-    {splitView && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / CAVITIES</span><h2>Scrap by cavity{live.cavities?.order_ref ? ` · ${live.cavities.order_ref}` : ''}</h2></div>
+    {splitView && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / CAVITIES</span><h2>Scrap by cavity{live.cavities?.order_ref ? ` · ${live.cavities.order_ref}` : ''} · {number(scrapTotal)} pcs{shiftRatePct != null ? ` · ${shiftRatePct.toFixed(2)}%` : ''}</h2></div>
       <div className="real-cav-table"><div className="real-cav-row head"><span>CAV.</span><span>PART</span><span>THIS SHIFT</span><span>SHARE</span><span>SHIFT SCRAP RATE</span></div>
         {lanes.map(no => { const row = cavityRows.find(r => r.cavity_no === no); const qty = laneQty(no);
           const share = scrapTotal > 0 ? qty / scrapTotal * 100 : 0; const over = row?.shift_reject_pct != null && row.target_pct != null && row.shift_reject_pct > row.target_pct;
