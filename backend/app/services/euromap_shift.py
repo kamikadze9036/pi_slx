@@ -106,6 +106,17 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
             except (httpx.HTTPError, ValueError):
                 log.exception("Euromap63 cavity scrap unavailable machine=%s", code)
                 cavities = None
+            if cavities is not None:
+                try:
+                    response = client.get("/api/machines/cavity-scrap/shift", params={
+                        "machine": code, "since": start.isoformat(), "until": end.isoformat()})
+                    response.raise_for_status()
+                    shift_cavities = response.json()
+                    if not isinstance(shift_cavities, dict) or not isinstance(shift_cavities.get("products"), list):
+                        raise ValueError("Invalid Euromap63 shift cavity scrap response")
+                    cavities["shift_products"] = shift_cavities["products"]
+                except (httpx.HTTPError, ValueError):
+                    log.exception("Euromap63 shift cavity scrap unavailable machine=%s", code)
         if downtime is None and cycles is None and derived is None and current_status is None:
             raise ValueError(f"No Euromap63 shift data available for {code}")
         return code, downtime, cycles, derived, current_status, scrap, cavities
@@ -146,14 +157,19 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     cavity_rows, cavity_by_product, cavity_order = [], {}, None
     if cavity_data is not None:
         cavity_order = cavity_data.get("order_ref")
+        shift_products = {row["product"]: row for row in cavity_data.get("shift_products", [])
+                          if isinstance(row, dict) and row.get("product")}
         for row in cavity_data["cavities"]:
             number = row.get("cavity_no") if isinstance(row, dict) else None
             if isinstance(number, bool) or not isinstance(number, int) or not row.get("product"):
                 continue
             cavity_by_product[row["product"]] = number
+            shift_row = shift_products.get(row["product"], {})
             cavity_rows.append({"cavity_no": number, "product": row["product"], "label": row.get("label"),
                                 "qty_good": row.get("qty_good"), "qty_reject": row.get("qty_reject"),
-                                "reject_pct": row.get("reject_pct"), "target_pct": row.get("target_pct")})
+                                "reject_pct": row.get("reject_pct"), "target_pct": row.get("target_pct"),
+                                "shift_made": shift_row.get("qty_made"), "shift_reject": shift_row.get("qty_reject"),
+                                "shift_reject_pct": shift_row.get("reject_pct")})
         cavity_rows.sort(key=lambda item: item["cavity_no"])
 
     declarations = None

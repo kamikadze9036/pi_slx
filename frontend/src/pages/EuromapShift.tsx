@@ -87,7 +87,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   };
   const maxHourScrap = Math.max(1, ...live.hours.map(hour => hourScrap(hour)?.total ?? 0));
   let worstCavity: number | null = null, worstPct = -1;
-  for (const row of cavityRows) if (row.reject_pct != null && row.reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.reject_pct; }
+  for (const row of cavityRows) if (row.shift_reject_pct != null && row.shift_reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.shift_reject_pct; }
   const reasonRows = scrapByReason.map(row => ({ ...row, byLane: lanes.map(no => laneQty(no, row.reason)) }));
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
   const sourceNote = live.stop_source === 'cycles'
@@ -170,18 +170,18 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
         <span>{clock(event.start)}–{clock(event.end)}</span><strong>{event.reason}</strong><b>{minutes(event.seconds)}</b></div>)}</div>
         : <p className="real-shift-help">No stop intervals returned for this shift. This does not confirm uninterrupted production.</p>}</section>
     {splitView && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">03 / CAVITIES</span><h2>Scrap by cavity{live.cavities?.order_ref ? ` · ${live.cavities.order_ref}` : ''}</h2></div>
-      <div className="real-cav-table"><div className="real-cav-row head"><span>CAV.</span><span>PART</span><span>THIS SHIFT</span><span>SHARE</span><span>ORDER SCRAP RATE</span></div>
+      <div className="real-cav-table"><div className="real-cav-row head"><span>CAV.</span><span>PART</span><span>THIS SHIFT</span><span>SHARE</span><span>SHIFT SCRAP RATE</span></div>
         {lanes.map(no => { const row = cavityRows.find(r => r.cavity_no === no); const qty = laneQty(no);
-          const share = scrapTotal > 0 ? qty / scrapTotal * 100 : 0; const over = row?.reject_pct != null && row.target_pct != null && row.reject_pct > row.target_pct;
+          const share = scrapTotal > 0 ? qty / scrapTotal * 100 : 0; const over = row?.shift_reject_pct != null && row.target_pct != null && row.shift_reject_pct > row.target_pct;
           return <div className="real-cav-row" key={no ?? 'unknown'}>
             <span className={`real-cav-tag ${no === worstCavity ? 'worst' : ''}`}>{laneName(no)}</span>
             <span className="real-cav-part">{row ? <>{row.label || row.product}<small>{row.product}</small></> : <>Unassigned<small>Other order or unknown product</small></>}</span>
             <b>{number(qty)} pcs</b>
             <span className="real-cav-bar"><span className="real-bar"><i style={{ width: `${share}%` }} /></span><em>{share.toFixed(0)}%</em></span>
-            <span className="real-cav-bar">{row?.reject_pct != null ? <><span className="real-bar"><i className={over ? 'over' : ''} style={{ width: `${Math.min(100, row.reject_pct / 20 * 100)}%` }} />
-              {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''}>{row.reject_pct.toFixed(2)}%</em></> : <em>—</em>}</span>
+            <span className="real-cav-bar">{row?.shift_reject_pct != null ? <><span className="real-bar"><i className={over ? 'over' : ''} style={{ width: `${Math.min(100, row.shift_reject_pct / 20 * 100)}%` }} />
+              {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''} title={row.reject_pct != null ? `Whole order: ${row.reject_pct.toFixed(2)}%` : undefined}>{row.shift_reject_pct.toFixed(2)}%</em></> : <em>—</em>}</span>
           </div>; })}</div>
-      <p className="real-shift-help">Order scrap rate = scrap / (good + scrap) for the whole order as kept by Cyclades; the marker is the target. Good pieces per cavity are not available per shift.</p>
+      <p className="real-shift-help">Shift scrap rate = scrap / produced pieces counted in this shift, from the Cyclades shift balance (same source as the Results by shift report); the whole-order rate is in the hover text and the marker is the target. Values end at the last operator declaration in the shift.</p>
     </section>}
     {view === 'imprint' && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">{splitView ? '04' : '03'} / SCRAP DECLARATIONS</span><h2>Declared scrap{scrapList ? ` · ${number(scrapTotal)} pcs` : ''}</h2></div>
       {scrapList === null ? <p className="real-shift-help">Scrap declarations are unavailable from Euromap63.</p>

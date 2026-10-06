@@ -30,7 +30,9 @@ def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monke
             {"cavity_no": 2, "product": "FG1", "label": "LH", "qty_good": 90.0, "qty_reject": 10.0,
              "reject_pct": 10.0, "target_pct": 5.0},
             {"cavity_no": 1, "product": "FG0", "label": "RH", "qty_good": 99.0, "qty_reject": 1.0,
-             "reject_pct": 1.0, "target_pct": 5.0}]}))
+             "reject_pct": 1.0, "target_pct": 5.0}],
+         "shift_products": [{"product": "FG1", "order_ref": "OF-1", "qty_made": 40.0, "qty_good": 36.0,
+                             "qty_reject": 4.0, "reject_pct": 10.0}]}))
     now = datetime(2026, 9, 25, 10, tzinfo=PRAGUE).astimezone(timezone.utc)
     result = euromap_shift.build_euromap_shift(
         DISPLAY, MACHINE, [SHIFT], now, {"refresh_seconds": 10},
@@ -50,6 +52,9 @@ def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monke
          "cavity_no": 2}]
     assert [row["cavity_no"] for row in live["cavities"]["rows"]] == [1, 2]
     assert live["cavities"]["order_ref"] == "OF-1"
+    by_cavity = {row["cavity_no"]: row for row in live["cavities"]["rows"]}
+    assert (by_cavity[2]["shift_made"], by_cavity[2]["shift_reject"], by_cavity[2]["shift_reject_pct"]) == (40.0, 4.0, 10.0)
+    assert by_cavity[1]["shift_reject_pct"] is None
 
 
 def test_empty_recording_is_unavailable_not_zero(monkeypatch):
