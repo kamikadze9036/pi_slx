@@ -16,12 +16,28 @@ function Gauge({ value, text, tone = 'good', caption, label }: {
   </div>;
 }
 
-function OverviewRow({ row, data, unit }: { row: OverviewHour; data: ImprintData; unit: HourUnit }) {
+function RecordedActivity({ row, maxCycles, maxScrap }: { row: OverviewHour; maxCycles: number; maxScrap: number }) {
+  const tracks = [
+    { key: 'good', label: 'CYCLES / COUNT', value: row.count, max: row.total ? Math.max(1, row.count ?? 0) : maxCycles, text: hourNumber(row.count) },
+    { key: 'downtime', label: 'STOP TIME', value: row.stopSeconds, max: Math.max(1, row.elapsed), text: hourStopTime(row.stopSeconds) },
+    { key: 'scrap', label: 'DECLARED SCRAP', value: row.scrap, max: row.total ? Math.max(1, row.scrap ?? 0) : maxScrap, text: `${hourNumber(row.scrap)} pcs` },
+  ];
+  return <div className="overview-recorded-bars">{tracks.map(track => <div key={track.key}>
+    <span>{track.label}<b>{track.text}</b></span>
+    <div className="overview-activity-track" aria-label={`${track.label}: ${track.text}`}>
+      {track.value != null && <i className={track.key} style={{ width: `${Math.max(0, Math.min(100, track.value / track.max * 100))}%` }} />}
+    </div>
+  </div>)}</div>;
+}
+
+function OverviewRow({ row, data, unit, maxCycles, maxScrap }: { row: OverviewHour; data: ImprintData; unit: HourUnit; maxCycles: number; maxScrap: number }) {
   const [expanded, setExpanded] = useState(false);
   const live = !!data.live_shift;
   const details = hourDetailSummary(row, live, unit);
   const total = Math.max(1, row.segments.reduce((sum, segment) => sum + segment.value, 0));
   const metrics = row.metrics;
+  // Without verified production metrics the recorded activity bars and count/stop gauges stay as in the original view.
+  const recorded = live && !metrics?.composition;
   const delta = metrics?.cycle?.delta_seconds ?? null;
   const cycleText = delta == null ? '—' : `${delta > 0 ? '+' : ''}${hourNumber(Math.round(delta * 10) / 10)}s`;
   const ratio = metrics?.efficiency?.ratio ?? null;
@@ -41,19 +57,21 @@ function OverviewRow({ row, data, unit }: { row: OverviewHour; data: ImprintData
         {!row.future && <button type="button" aria-expanded={expanded} aria-controls={detailId} onClick={() => setExpanded(!expanded)}>
           {expanded ? 'Hide details −' : 'Hour details +'}</button>}
       </th>
-      <td className="overview-composition"><div className="overview-stack" aria-label={`Output and losses ${row.total ? 'shift' : hourClock(row.start)} in ${unit === 'minutes' ? 'minutes' : 'pieces'}`}>
+      <td className="overview-composition">{recorded ? <RecordedActivity row={row} maxCycles={maxCycles} maxScrap={maxScrap} /> : <div className="overview-stack" aria-label={`Output and losses ${row.total ? 'shift' : hourClock(row.start)} in ${unit === 'minutes' ? 'minutes' : 'pieces'}`}>
         {row.segments.map(segment => <div key={segment.key} className={`overview-segment ${segment.key}`}
           style={{ width: `${segment.value / total * 100}%` }} title={`${segment.label}: ${unit === 'minutes' ? hourDuration(segment.value * 60) : `${hourNumber(segment.value)} ${['good', 'scrap'].includes(segment.key) ? 'pcs' : 'pcs eq.'}`}`}>
           <span>{hourNumber(Math.round(segment.value * 10) / 10)}</span>
         </div>)}
         {row.segments.length === 0 && <span className="overview-no-composition">Breakdown unavailable</span>}
-      </div></td>
-      <td><Gauge value={ratio} text={efficiencyText} tone={ratio == null ? 'unknown' : inconsistent ? 'scrap' : ratio < (data.display_settings?.oee_warning_threshold ?? 0.7) ? 'warning' : 'good'}
+      </div>}</td>
+      <td>{recorded ? <div className="overview-record-count"><Gauge value={row.count == null ? null : row.total ? Number(row.count > 0) : row.count / maxCycles} text={hourNumber(row.count)}
+        caption={data.live_shift?.cycle_source === 'counter' ? 'Counter increase' : 'Recorded cycles'} label={`Recorded count ${hourNumber(row.count)}`} /></div> : <Gauge value={ratio} text={efficiencyText} tone={ratio == null ? 'unknown' : inconsistent ? 'scrap' : ratio < (data.display_settings?.oee_warning_threshold ?? 0.7) ? 'warning' : 'good'}
         caption={metrics?.capacity?.ideal_capacity != null ? `${hourNumber(metrics.production?.good_count ?? null)} / ${hourNumber(Math.round(metrics.capacity.ideal_capacity * 10) / 10)} pcs${ratio != null && ratio > 1 ? ' · above 100%' : ''}` : unavailable}
-        label={`Output efficiency ${efficiencyText}`} /></td>
-      <td><Gauge value={delta == null ? null : 1} text={cycleText} tone={delta == null ? 'unknown' : delta > 0 ? 'scrap' : 'good'}
+        label={`Output efficiency ${efficiencyText}`} />}</td>
+      <td>{recorded ? <div className="overview-stop-value"><Gauge value={row.stopSeconds == null ? null : row.stopSeconds / Math.max(1, row.elapsed)} text={row.stopSeconds == null ? '—' : `${Math.round(row.stopSeconds / 60)}m`} tone="warning"
+        caption={`${hourNumber(row.stopCount)} ${row.stopCount === 1 ? 'stop' : 'stops'}`} label={`Observed stops ${hourNumber(row.stopCount)}, stop time ${hourStopTime(row.stopSeconds)}`} /></div> : <Gauge value={delta == null ? null : 1} text={cycleText} tone={delta == null ? 'unknown' : delta > 0 ? 'scrap' : 'good'}
         caption={delta == null ? 'No verified cycle' : `${hourNumber(Math.round(metrics!.cycle!.actual_seconds! * 10) / 10)} / ${hourNumber(metrics!.cycle!.ideal_seconds)} s`}
-        label={delta == null ? 'Cycle time unavailable' : `Calculated cycle ${metrics!.cycle!.actual_seconds} seconds, ideal ${metrics!.cycle!.ideal_seconds} seconds`} /></td>
+        label={delta == null ? 'Cycle time unavailable' : `Calculated cycle ${metrics!.cycle!.actual_seconds} seconds, ideal ${metrics!.cycle!.ideal_seconds} seconds`} />}</td>
       <td className="overview-reasons" colSpan={3}>
         <div className="overview-detail-grid">
           {details.length ? details.map((detail, index) => <Fragment key={`${detail.key}-${detail.reason}-${index}`}>
@@ -93,6 +111,8 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
   const rows = buildOverviewHours(data, unit);
   const total = buildOverviewTotal(data, rows, unit);
   const headline = overviewHeadline(total);
+  const maxCycles = Math.max(1, ...rows.map(row => row.count ?? 0));
+  const maxScrap = Math.max(1, ...rows.map(row => row.scrap ?? 0));
   const pcs = (value: number | null) => value == null ? '—' : `${hourNumber(Math.round(value * 10) / 10)} pcs`;
   const query = search.trim().toLocaleLowerCase('en-US');
   const filtered = rows.filter(row => [hourClock(row.start), hourClock(row.end), data.machine.name, data.production?.order,
@@ -137,14 +157,14 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
       {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div>}
     <div className="overview-table-scroll" role="region" aria-label="Hourly production overview" tabIndex={0}>
       <table className="overview-table"><colgroup><col className="col-job" /><col className="col-hour" /><col className="col-bar" /><col className="col-gauge" /><col className="col-gauge" /><col className="col-type" /><col className="col-reason" /><col className="col-comment" /></colgroup>
-        <thead><tr><th>ORDER</th><th>HOUR / MACHINE</th><th>OUTPUT / LOSSES<small>{unit === 'minutes' ? 'MINUTES' : 'PIECES / EQ.'}</small></th><th>OUTPUT EFFICIENCY<small>OK / IDEAL CAPACITY</small></th><th>CYCLE<small>ACTUAL / IDEAL</small></th><th>TYPE</th><th>REASON</th><th>COMMENT</th></tr></thead>
-        <tbody>{filtered.map(row => <OverviewRow key={`${data.machine.id}-${row.id}`} row={row} data={data} unit={unit} />)}
+        <thead><tr><th>ORDER</th><th>HOUR / MACHINE</th>{piecesAvailable || !live ? <><th>OUTPUT / LOSSES<small>{unit === 'minutes' ? 'MINUTES' : 'PIECES / EQ.'}</small></th><th>OUTPUT EFFICIENCY<small>OK / IDEAL CAPACITY</small></th><th>CYCLE<small>ACTUAL / IDEAL</small></th></> : <><th>RECORDED ACTIVITY</th><th>{data.live_shift?.cycle_source === 'counter' ? 'COUNT' : 'CYCLES'}</th><th>STOPS<small>OBSERVED STOP TIME</small></th></>}<th>TYPE</th><th>REASON</th><th>COMMENT</th></tr></thead>
+        <tbody>{filtered.map(row => <OverviewRow key={`${data.machine.id}-${row.id}`} row={row} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} />)}
           {filtered.length === 0 && <tr><td className="overview-no-results" colSpan={8}>No hours match this search. <button type="button" onClick={() => setSearch('')}>Clear search</button></td></tr>}
-          <OverviewRow key={`${data.machine.id}-${data.shift!.start}-total`} row={total} data={data} unit={unit} /></tbody>
+          <OverviewRow key={`${data.machine.id}-${data.shift!.start}-total`} row={total} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} /></tbody>
       </table>
     </div>
-    <div className="overview-legend">{(piecesAvailable ? [...compositionOrder] : [compositionOrder[2], { key: 'unknown', label: 'Unverified time' }]).map(category =>
-      <span key={category.key}><i className={category.key} />{category.label}</span>)}{unit === 'minutes' && <span><i className="future" />Future time</span>}</div>
+    <div className="overview-legend">{(piecesAvailable ? [...compositionOrder] : live ? [{ key: 'good', label: data.live_shift?.cycle_source === 'counter' ? 'Counter increase' : 'Recorded cycles' }, { key: 'downtime', label: 'Observed stop time' }, { key: 'scrap', label: 'Declared scrap' }] : [compositionOrder[2], { key: 'unknown', label: 'Unverified time' }]).map(category =>
+      <span key={category.key}><i className={category.key} />{category.label}</span>)}{unit === 'minutes' && piecesAvailable && <span><i className="future" />Future time</span>}</div>
     <p className="overview-note">Output / losses share one scale per hour: OK pieces and scrap use ideal-cycle time, stops use observed duration, slow running is the remaining planned time; in pieces mode time losses are ideal-rate equivalents. Without scrap / stops = OK + scrap + stopped time recovered at the achieved running rate (a calculated counterfactual, not a measurement); ideal capacity is planned time at the ideal cycle. Efficiency is output / ideal capacity and is labelled OEE only when its inputs are verified; values above 100% are kept as calculated. {live ? 'Recorded cycles are not OK pieces; unmarked time does not confirm running. ' : ''}“—” means unavailable, not zero. The total covers the full shift even while searching.</p>
     <footer><span>{data.display.name} / {data.shift!.name}</span><span>{filtered.length} / {rows.length} HOURS</span><span>UPDATED {updatedAt ? hourClock(updatedAt.toISOString()) : '—'}</span></footer>
   </main>;
