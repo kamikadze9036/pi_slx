@@ -13,7 +13,7 @@ export function CavityRates({ live }: { live: Live }) {
     const worst = rows.length > 1 && row.reject_pct === worstPct;
     return <div key={row.cavity_no} role="listitem" className={worst ? 'worst' : ''}
       title={`K${row.cavity_no} · ${row.label || row.product} · ${row.qty_reject ?? '—'} scrap / ${(row.qty_good ?? 0) + (row.qty_reject ?? 0)} made${row.target_pct != null ? ` · target ${row.target_pct}%` : ''}${worst ? ' · worst cavity' : ''}`}>
-      <span>K{row.cavity_no}</span><b>{row.reject_pct!.toFixed(2)}%</b></div>;
+      <span>K{row.cavity_no}</span><b>{row.reject_pct!.toFixed(2)}%</b>{row.qty_reject != null && <small>{new Intl.NumberFormat('en-US').format(row.qty_reject)} pcs</small>}</div>;
   })}</div>;
 }
 
