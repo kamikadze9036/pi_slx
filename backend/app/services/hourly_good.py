@@ -20,21 +20,21 @@ def _time(value) -> datetime | None:
 
 
 def _segments(good: dict) -> list[tuple[str, str, datetime, datetime, float]]:
-    """(product, order, start, end, increase) between consecutive events of the same order."""
+    """(product, order, start, end, increase) between consecutive events of the same product and order."""
     products = {item.get("product") for item in good.get("declarations", []) if isinstance(item, dict)}
-    events: dict[str, list[tuple[datetime, float, str]]] = {}
+    events: dict[tuple[str, str], list[tuple[datetime, float]]] = {}
     for item in [*good.get("baseline", []), *good.get("declarations", [])]:
         if not isinstance(item, dict) or item.get("product") not in products:
             continue
         at, qty = _time(item.get("time")), item.get("qty_good")
         if at is None or isinstance(qty, bool) or not isinstance(qty, (int, float)):
             continue
-        events.setdefault(item["product"], []).append((at, float(qty), str(item.get("order_ref"))))
+        events.setdefault((item["product"], str(item.get("order_ref"))), []).append((at, float(qty)))
     result = []
-    for product, rows in events.items():
+    for (product, order), rows in events.items():
         rows.sort(key=lambda row: row[0])
-        result += [(product, a[2], a[0], b[0], b[1] - a[1]) for a, b in zip(rows, rows[1:])
-                   if a[2] == b[2] and b[1] >= a[1] and b[0] > a[0]]
+        result += [(product, order, a[0], b[0], b[1] - a[1]) for a, b in zip(rows, rows[1:])
+                   if b[1] >= a[1] and b[0] > a[0]]
     return result
 
 
