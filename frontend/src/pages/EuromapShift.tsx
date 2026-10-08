@@ -156,7 +156,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
           title={scrapTitle(slot)} />)}</div></>}
       {scrapList && splitView && <><div className="real-timeline-label">DECLARED SCRAP BY CAVITY / {live.bin_minutes} MIN</div>
         <div className="real-scrap-lanes">{laneData.map(lane => <div key={lane.no ?? 'unknown'} className="real-scrap-lane">
-          <span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span><em className="lane-total">{number(laneQty(lane.no))}</em>
+          <div className="lane-head"><span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span><em className="lane-total">{number(laneQty(lane.no))} pcs</em></div>
           <div className="real-timeline-scrap lane" aria-label={`Declared scrap, cavity ${laneName(lane.no)}`}>{[...lane.bins].map(([slot, quantity]) => <i key={slot}
             style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(8, quantity / maxScrapBin * 100)}%` }}
             title={scrapTitle(slot, lane.no)} />)}</div></div>)}</div></>}
