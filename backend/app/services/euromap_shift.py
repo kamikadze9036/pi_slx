@@ -8,7 +8,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.cache import SnapshotCache
-from app.services.hourly_good import estimate_good, shift_totals
+from app.services.hourly_good import estimate_good, planned_cycle_for, shift_totals
 from app.services.shifts import hourly_intervals, selected_shift, utc_seconds
 
 log = logging.getLogger("dashboard.euromap_shift")
@@ -130,7 +130,17 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
                     log.exception("Euromap63 good declarations unavailable machine=%s", code)
         if downtime is None and cycles is None and derived is None and current_status is None:
             raise ValueError(f"No Euromap63 shift data available for {code}")
-        return code, downtime, cycles, derived, current_status, scrap, cavities
+        planned_cycles = None
+        try:
+            response = client.get("/api/machines/planned-cycles", params=params)
+            response.raise_for_status()
+            planned = response.json()
+            if not isinstance(planned, dict) or not isinstance(planned.get("orders"), list):
+                raise ValueError("Invalid Euromap63 planned cycles response")
+            planned_cycles = planned["orders"]
+        except (httpx.HTTPError, ValueError):
+            log.exception("Euromap63 planned cycles unavailable machine=%s", code)
+        return code, downtime, cycles, derived, current_status, scrap, cavities, planned_cycles
 
 
 def build_euromap_shift(display, machine, shifts, now: datetime,
@@ -148,7 +158,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     key = (machine.mes_id, start.isoformat(), observed_end.isoformat() if not current else "current")
     # Past shifts also need the machine's current order and planned cycle: the hourly overview
     # derives production metrics from it for hours that belong to that same order.
-    (code, downtime, cycles, derived, current_status, scrap, cavity_data), stale = cache.get(
+    (code, downtime, cycles, derived, current_status, scrap, cavity_data, *extra), stale = cache.get(
         key, lambda: _fetch(machine.mes_id, start, observed_end, True))
 
     events = []
@@ -254,10 +264,14 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                       "stop_count": sum(_time(item["start"]) < finish_utc and _time(item["end"]) > begin_utc
                                         for item in events) if has_stop_coverage else None})
 
+    planned_cycles = extra[0] if extra else None
     estimates = estimate_good(good_hours, (cavity_data or {}).get("good_declarations"))
-    for hour, estimate in zip(hours, estimates):
+    for hour, estimate, (begin_utc, finish_utc) in zip(hours, estimates, good_hours):
         hour["good_estimate"] = estimate["good"]
         hour["good_orders"] = estimate["orders"]
+        hour["good_products"] = estimate["products"]
+        hour["planned_cycle_seconds"] = (planned_cycle_for(estimate["orders"][0], begin_utc, finish_utc, planned_cycles)
+                                         if len(estimate["orders"]) == 1 else None)
     planned_cycle = (current_status or {}).get("cycle_time_planned_s")
 
     bins = []

@@ -34,10 +34,13 @@ def _composition(i: SegmentInput, r: SegmentResult) -> dict:
 def _live_inputs(live: dict, hour: dict, raw: dict, elapsed: float) -> SegmentInput | None:
     """Segment input for a live (Euromap63) hour whose OK pieces could be estimated, else None."""
     good, scrap, stops = hour.get("good_estimate"), raw["declared_scrap"], raw["stop_seconds"]
-    cycle, per_cycle, order = live.get("planned_cycle_seconds"), live.get("pieces_per_cycle"), live.get("current_order")
-    # The planned cycle belongs to the current order only; hours of other orders stay unavailable.
-    if (good is None or scrap is None or stops is None or not cycle or not per_cycle
-            or not order or set(hour.get("good_orders") or []) != {order}):
+    orders = hour.get("good_orders") or []
+    cycle, per_cycle = hour.get("planned_cycle_seconds"), hour.get("good_products")
+    if cycle is None and orders == [live.get("current_order")]:
+        # Fallback: planned cycle and cavity count of the machine's current order
+        cycle, per_cycle = live.get("planned_cycle_seconds"), per_cycle or live.get("pieces_per_cycle")
+    # One order per hour: a changeover hour mixes cycles and stays unavailable.
+    if good is None or scrap is None or stops is None or not cycle or not per_cycle or len(orders) != 1:
         return None
     # Interpolation noise can push an hour slightly above the ideal rate; that is not an inconsistency.
     return SegmentInput(elapsed, good, scrap, stops, 0, cycle, per_cycle, 0, gain_verified=True)

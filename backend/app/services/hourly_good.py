@@ -40,11 +40,11 @@ def _segments(good: dict) -> dict[str, list[tuple[datetime, datetime, float, str
 def estimate_good(hours: list[tuple[datetime, datetime]], good: dict | None) -> list[dict]:
     """One {"good": float | None, "orders": [..]} per (begin, finish) UTC hour interval."""
     if not good:
-        return [{"good": None, "orders": []} for _ in hours]
+        return [{"good": None, "orders": [], "products": 0} for _ in hours]
     segments = _segments(good)
     out = []
     for begin, finish in hours:
-        total, orders, valid, touched = 0.0, set(), True, False
+        total, orders, valid, touched, products = 0.0, set(), True, False, 0
         for rows in segments.values():
             covered = 0.0
             for start, end, delta, order in rows:
@@ -56,10 +56,12 @@ def estimate_good(hours: list[tuple[datetime, datetime]], good: dict | None) -> 
                 orders.add(order)
             if covered > 0:
                 touched = True
+                products += 1
                 if covered < (finish - begin).total_seconds() - TOLERANCE_SECONDS:
                     valid = False
         out.append({"good": total if touched and valid else None,
-                    "orders": sorted(orders) if touched and valid else []})
+                    "orders": sorted(orders) if touched and valid else [],
+                    "products": products if touched and valid else 0})
     return out
 
 
@@ -88,3 +90,18 @@ def shift_totals(good: dict | None) -> dict | None:
             # Delta scrap is a state that shrinks when cartons are declared, not a cumulative counter
             totals[name] += value - start if value >= start or name == "delta_scrap" else value
     return {**totals, "as_of": max(i["time"] for i in last.values()), "products": len(last)}
+
+
+def planned_cycle_for(order: str, begin: datetime, finish: datetime, rows: list | None) -> float | None:
+    """Planned cycle (seconds) of an order: the shift row overlapping the hour, else the latest one."""
+    candidates = []
+    for row in rows or []:
+        cycle = row.get("planned_cycle_s") if isinstance(row, dict) else None
+        start, end = _time(row.get("start")), _time(row.get("end"))
+        if row.get("order_ref") != order or isinstance(cycle, bool) or not isinstance(cycle, (int, float)) or cycle <= 0 or start is None or end is None:
+            continue
+        candidates.append((start, end, float(cycle)))
+    if not candidates:
+        return None
+    overlapping = [c for c in candidates if min(c[1], finish) > max(c[0], begin)]
+    return max(overlapping or candidates, key=lambda c: c[0])[2]

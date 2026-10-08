@@ -73,3 +73,21 @@ def test_delta_scrap_may_decrease_when_cartons_are_declared():
     totals = shift_totals({"baseline": [row(5, 100, 80, 5, 15)], "declarations": [row(7, 160, 146, 6, 8)]})
     assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (60, 66, 1, -7)
     assert totals["made"] == totals["ok"] + totals["scrap"] + totals["delta_scrap"]
+
+
+def test_planned_cycle_prefers_the_row_overlapping_the_hour():
+    from app.services.hourly_good import planned_cycle_for
+    rows = [{"order_ref": "OF1", "planned_cycle_s": 50.0, "start": utc(0).isoformat(), "end": utc(6).isoformat()},
+            {"order_ref": "OF1", "planned_cycle_s": 55.0, "start": utc(6).isoformat(), "end": utc(14).isoformat()},
+            {"order_ref": "OF2", "planned_cycle_s": 40.0, "start": utc(0).isoformat(), "end": utc(14).isoformat()}]
+    assert planned_cycle_for("OF1", utc(7), utc(8), rows) == 55.0
+    assert planned_cycle_for("OF1", utc(20), utc(21), rows) == 55.0   # no overlap: latest row
+    assert planned_cycle_for("OF3", utc(7), utc(8), rows) is None
+    assert planned_cycle_for("OF1", utc(7), utc(8), None) is None
+
+
+def test_hour_of_a_non_current_order_uses_its_own_planned_cycle_and_product_count():
+    base = live_base({"good_orders": ["OF0"], "good_products": 2, "planned_cycle_seconds": 40.0})
+    row = compute_overview(base)["overview"]["hours"][0]
+    assert row["capacity"]["ideal_capacity"] == pytest.approx(3600 / 40 * 2)
+    assert row["production"]["count_basis"] == "estimated"
