@@ -2,6 +2,7 @@ import { Fragment, useState, type CSSProperties } from 'react';
 import type { ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
+import { CavityRates } from '../CavityRates';
 import { useHourUnit, type HourUnit } from '../HourUnit';
 import { buildOverviewHours, buildOverviewTotal, compositionOrder, hourClock, hourDetailSummary, hourDuration, hourNumber, hourStopTime,
   overviewHeadline, type OverviewHour } from '../hourly-model';
@@ -155,7 +156,7 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
       <span>CURRENT MACHINE STATE · <b>{data.live_shift.current_machine.state === 'bezi' ? 'RUNNING' : data.live_shift.current_machine.state === 'stoji' ? 'STOPPED' : data.live_shift.current_machine.state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN'}</b></span>
       <span>CURRENT ORDER · <b>{data.live_shift.current_machine.order_ref || '—'}</b></span>
       <span>ACTUAL / PLANNED CYCLE · <b>{hourNumber(data.live_shift.current_machine.cycle_time_real_s ?? null)} / {hourNumber(data.live_shift.current_machine.cycle_time_planned_s ?? null)} s</b></span>
-      <span>WORST CAVITY · CURRENT ORDER · <b>{data.live_shift.current_machine.worst_cavity_scrap?.reject_pct != null ? `${data.live_shift.current_machine.worst_cavity_scrap.reject_pct.toFixed(2)}%` : '—'}</b></span>
+      <span className="cavity-cell">SCRAP BY CAVITY · CURRENT ORDER{data.live_shift.cavities?.order_ref ? ` ${data.live_shift.cavities.order_ref}` : ''} · <CavityRates live={data.live_shift} /></span>
       {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div>}
     <div className="overview-table-scroll" role="region" aria-label="Hourly production overview" tabIndex={0}>
       <table className="overview-table"><colgroup><col className="col-job" /><col className="col-hour" /><col className="col-bar" /><col className="col-gauge" /><col className="col-gauge" /><col className="col-type" /><col className="col-reason" /><col className="col-comment" /></colgroup>

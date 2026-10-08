@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react';
 import type { DashboardData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
+import { CavityRates } from '../CavityRates';
 
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const number = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US').format(value);
@@ -127,7 +128,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
       <div><span>CURRENT ORDER</span><strong>{live.current_machine.order_ref || '—'}</strong></div>
       <div><span>ACTUAL / PLANNED CYCLE</span><strong>{seconds(live.current_machine.cycle_time_real_s)} / {seconds(live.current_machine.cycle_time_planned_s)}</strong></div>
-      <div><span>WORST CAVITY · CURRENT ORDER</span><strong>{live.current_machine.worst_cavity_scrap?.reject_pct != null ? `${live.current_machine.worst_cavity_scrap.reject_pct.toFixed(2)}%` : '—'}</strong></div>
+      <div className="cavity-cell"><span>SCRAP BY CAVITY · CURRENT ORDER{live.cavities?.order_ref ? ` ${live.cavities.order_ref}` : ''}</span><CavityRates live={live} /></div>
     </section>}
     <div className="real-shift-note">{counter ? 'Cycle counts come from changes in a sampled machine counter; missing intervals and counter resets are excluded. ' : ''}{sourceNote} Good pieces, shift scrap and OEE are unavailable until a verified production source is connected.</div>
     {!hasObservedData && <div className="real-shift-empty">No cycle or stop records are available for this shift. No production quantity is inferred.</div>}

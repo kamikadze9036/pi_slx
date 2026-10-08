@@ -15,6 +15,7 @@ import './fleet.css';
 import './shift-navigation.css';
 import './euromap-shift.css';
 import './hourly-overview.css';
+import './cavity-rates.css';
 
 const path = window.location.pathname;
 const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly-new|hourly))?/);

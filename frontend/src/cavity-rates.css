@@ -1,0 +1,5 @@
+.cavity-rates{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline}.cavity-rates>div{display:flex;gap:6px;align-items:baseline;white-space:nowrap}
+.cavity-rates span{margin:0!important;display:inline!important;font-size:10px;font-weight:800;letter-spacing:.05em;color:var(--real-muted,var(--ov-muted,#91abb3))}
+.cavity-rates b{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:500;line-height:1.05;color:var(--real-ink,var(--ov-ink,#edf7f5))}
+.cavity-rates>div.worst span,.cavity-rates>div.worst b{color:#ee6a63;font-weight:800}.theme-light .cavity-rates>div.worst span,.theme-light .cavity-rates>div.worst b{color:#c0392b}
+.cavity-rates-empty{display:block}.overview-current-state .cavity-cell{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.overview-current-state .cavity-rates b{font-size:16px}
