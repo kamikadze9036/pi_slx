@@ -146,6 +146,8 @@ def shift_orders(planned: list | None, good: dict | None, current_order: str | N
                 rows.append({"cavity_no": number, "product": product, "label": None, "qty_good": good_qty,
                              "qty_reject": reject, "target_pct": None,
                              "reject_pct": reject / (good_qty + reject) * 100 if good_qty + reject > 0 else None})
+        if not running and not rows and not info.get(order, {}).get("tool"):
+            continue  # shift balance rows without declarations or tool are not real production
         end = info.get(order, {}).get("end")
         orders.append({"order_ref": order, "status": "running" if running else "finished",
                        "tool": info.get(order, {}).get("tool"), "tool_label": info.get(order, {}).get("tool_label"),
