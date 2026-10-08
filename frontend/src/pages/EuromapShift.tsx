@@ -156,7 +156,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
           title={scrapTitle(slot)} />)}</div></>}
       {scrapList && splitView && <><div className="real-timeline-label">DECLARED SCRAP BY CAVITY / {live.bin_minutes} MIN</div>
         <div className="real-scrap-lanes">{laneData.map(lane => <div key={lane.no ?? 'unknown'} className="real-scrap-lane">
-          <span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span>
+          <span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span><em className="lane-total">{number(laneQty(lane.no))}</em>
           <div className="real-timeline-scrap lane" aria-label={`Declared scrap, cavity ${laneName(lane.no)}`}>{[...lane.bins].map(([slot, quantity]) => <i key={slot}
             style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(14, quantity / maxLaneBin * 100)}%` }}
             title={scrapTitle(slot, lane.no)} />)}</div></div>)}</div></>}
@@ -177,7 +177,9 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
             <span className="real-cav-bar"><span className="real-bar"><i style={{ width: `${share}%` }} /></span><em>{share.toFixed(0)}%</em></span>
             <span className="real-cav-bar">{row?.shift_reject_pct != null ? <><span className="real-bar"><i className={over ? 'over' : ''} style={{ width: `${Math.min(100, row.shift_reject_pct / 20 * 100)}%` }} />
               {row.target_pct != null && <u style={{ left: `${Math.min(100, row.target_pct / 20 * 100)}%` }} />}</span><em className={over ? 'over' : ''} title={row.reject_pct != null ? `Whole order: ${row.reject_pct.toFixed(2)}%` : undefined}>{row.shift_reject_pct.toFixed(2)}%</em></> : <em>—</em>}</span>
-          </div>; })}</div>
+          </div>; })}
+        <div className="real-cav-row total"><span className="real-cav-tag">Σ</span><span className="real-cav-part">Total, all cavities</span><b>{number(scrapTotal)} pcs</b>
+          <span className="real-cav-bar"><em>100%</em></span><span className="real-cav-bar"><em>{shiftRatePct != null ? `${shiftRatePct.toFixed(2)}%` : '—'}</em></span></div></div>
       <p className="real-shift-help">Shift scrap rate = scrap / produced pieces counted in this shift, from the Cyclades shift balance (same source as the Results by shift report); the whole-order rate is in the hover text and the marker is the target. Values end at the last operator declaration in the shift.</p>
     </section>}
     {view === 'imprint' && <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">{splitView ? '04' : '03'} / SCRAP DECLARATIONS</span><h2>Declared scrap{scrapList ? ` · ${number(scrapTotal)} pcs` : ''}</h2></div>
@@ -188,7 +190,8 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
           {reasonRows.map(row => { const top = Math.max(...row.byLane); return <Fragment key={row.reason}>
             <strong>{row.reason}</strong>
             {row.byLane.map((qty, index) => <span key={index} className={qty && qty === top ? 'hot' : ''}>{qty || '·'}</span>)}
-            <b>{number(row.quantity)}</b></Fragment>; })}</div>
+            <b>{number(row.quantity)}</b></Fragment>; })}
+          <strong className="total">TOTAL</strong>{lanes.map(no => <span key={no ?? 'unknown'} className="total">{laneQty(no) || '·'}</span>)}<b className="total">{number(scrapTotal)}</b></div>
         : <div className="real-scrap-reasons">{scrapByReason.map(row => <div key={row.reason}>
           <strong>{row.reason}</strong><span>{row.declarations}× declared</span><b>{number(row.quantity)} pcs</b></div>)}</div>}
         <div className={`real-scrap-list ${splitView ? 'by-cavity' : ''}`} aria-label="Individual scrap declarations">{scrapList.map((item, index) => <div key={`${item.time}-${index}`}>

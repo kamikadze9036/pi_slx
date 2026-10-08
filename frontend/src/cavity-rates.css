@@ -21,3 +21,7 @@
 @media(max-width:750px){.overview-live-kpis.overview-shift-ribbon{grid-template-columns:repeat(2,minmax(0,1fr))}.overview-shift-ribbon .scrap-kpi{grid-column:span 2}}
 .overview-cyclades{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 22px;margin:-6px 0 12px;padding:6px 12px;border:1px solid var(--ov-border);border-top:0;background:var(--ov-panel);font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--ov-muted)}
 .overview-cyclades b{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:500;letter-spacing:0;color:var(--ov-ink)}.overview-cyclades>span:first-child{color:var(--ov-ink)}.overview-cyclades .overview-cyclades-estimate{margin-left:auto}
+.real-scrap-lane{grid-template-columns:34px 44px minmax(0,1fr)}
+.real-cav-row.total{border-top:1px solid var(--real-border);font-weight:800}.real-cav-row.total .real-cav-tag{background:transparent;color:var(--real-ink)}
+.real-scrap-matrix .total{border-top:1px solid var(--real-border);padding-top:6px;font-weight:800;color:var(--real-ink)}
+.real-scrap-lane .lane-total{font-style:normal;font-size:11px;font-weight:800;text-align:right;color:var(--real-ink)}
