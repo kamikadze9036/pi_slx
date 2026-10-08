@@ -146,8 +146,10 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     current = start.astimezone(timezone.utc) <= now_utc < end.astimezone(timezone.utc)
     observed_end = min(end.astimezone(timezone.utc), now_utc)
     key = (machine.mes_id, start.isoformat(), observed_end.isoformat() if not current else "current")
+    # Past shifts also need the machine's current order and planned cycle: the hourly overview
+    # derives production metrics from it for hours that belong to that same order.
     (code, downtime, cycles, derived, current_status, scrap, cavity_data), stale = cache.get(
-        key, lambda: _fetch(machine.mes_id, start, observed_end, current))
+        key, lambda: _fetch(machine.mes_id, start, observed_end, True))
 
     events = []
     for row in downtime.get("segments", []) if downtime else []:
