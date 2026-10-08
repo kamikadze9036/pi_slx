@@ -108,26 +108,28 @@ def planned_cycle_for(order: str, begin: datetime, finish: datetime, rows: list 
 
 
 def order_remaining(progress: dict | None, cycle_s: float | None) -> dict | None:
-    """Expected time to finish a running order.
+    """Expected time to finish a running order, as Cyclades shows it.
 
-    Main figure: the product with the most pieces still missing (planned minus good) times the planned
-    cycle, since all cavities run in the same cycles. Cross-check: planned order duration
-    (OF_DUREOFPREV, seconds, includes the scrap allowance) minus the net time already worked.
+    Share of the order still missing on the slowest product (planned minus good, the product with
+    the fewest good pieces limits the order) times the planned order duration OF_DUREOFPREV, which is
+    the planned quantity x planned cycle x (1 + scrap allowance). Verified against Cyclades on two presses
+    (12.68 h and 6.0 h). Without the planned duration: missing pieces x planned cycle, no allowance.
     """
     if not isinstance(progress, dict):
         return None
-    left = []
+    ratios, left = [], []
     for product in progress.get("products") or []:
         planned, good = product.get("qty_planned"), product.get("qty_good")
         if isinstance(planned, (int, float)) and isinstance(good, (int, float)) and planned > 0:
-            left.append(max(0.0, planned - good))
-    hours = max(left) * cycle_s / 3600 if left and cycle_s and cycle_s > 0 else None
-    duration, worked, stops = progress.get("planned_duration_raw"), progress.get("worked_fab_raw"), progress.get("worked_stops_raw")
-    by_plan = (max(0.0, duration - (worked - (stops or 0))) / 3600
-               if all(isinstance(v, (int, float)) for v in (duration, worked)) and duration > 0 else None)
-    if hours is None and by_plan is None:
+            missing = max(0.0, planned - good)
+            left.append(missing)
+            ratios.append(missing / planned)
+    if not left:
         return None
-    return {"hours": hours, "hours_by_plan": by_plan, "pieces_left": max(left) if left else None}
+    plain = max(left) * cycle_s / 3600 if cycle_s and cycle_s > 0 else None
+    duration = progress.get("planned_duration_raw")
+    hours = max(ratios) * duration / 3600 if isinstance(duration, (int, float)) and duration > 0 else plain
+    return {"hours": hours, "hours_without_allowance": plain, "pieces_left": max(left)}
 
 
 def shift_orders(planned: list | None, good: dict | None, current_order: str | None, shift_end: datetime,

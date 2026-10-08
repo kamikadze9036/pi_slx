@@ -59,7 +59,7 @@ export interface Display { id: string; name: string; machine_id: string;
 export interface ShiftOrder {
   order_ref: string; status: 'running' | 'finished'; tool: string | null; tool_label: string | null;
   planned_cycle_s: number | null; ended_at: string | null;
-  remaining?: { hours: number | null; hours_by_plan: number | null; pieces_left: number | null } | null;
+  remaining?: { hours: number | null; hours_without_allowance: number | null; pieces_left: number | null } | null;
   cavities: { cavity_no: number; product: string; label?: string | null; qty_good: number | null;
     qty_reject: number | null; reject_pct: number | null; target_pct?: number | null }[];
 }
