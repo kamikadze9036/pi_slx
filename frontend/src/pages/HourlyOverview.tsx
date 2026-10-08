@@ -3,6 +3,7 @@ import type { ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
 import { CavityRates, ScrapLanes, scrapByCavity } from '../CavityRates';
+import { OrdersStrip } from '../OrdersStrip';
 import { useHourUnit, type HourUnit } from '../HourUnit';
 import { buildOverviewHours, buildOverviewTotal, compositionOrder, hourClock, hourDetailSummary, hourDuration, hourNumber, hourStopTime,
   overviewHeadline, type OverviewHour } from '../hourly-model';
@@ -157,13 +158,16 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
       <span>OK <b>{hourNumber(cyclades.ok)}</b></span><span>SCRAP <b>{hourNumber(cyclades.scrap)}</b></span>
       <span>UNDECLARED (Δ SCRAP) <b>{hourNumber(cyclades.delta_scrap)}</b></span><span>MADE <b>{hourNumber(cyclades.made)}</b></span>
       {headline.estimated && headline.coverage && <span className="overview-cyclades-estimate">OUR ESTIMATE · {headline.coverage.hours_covered}/{headline.coverage.hours_total} H <b>~{hourNumber(Math.round(headline.ok ?? 0))}</b> OK</span>}</p>}
-    {live && data.live_shift?.current_machine && <><h2 className="scope-heading order">CURRENT ORDER <span>{data.live_shift.current_machine.order_ref || '—'}{data.live_shift.current_machine.tool_ref ? ` · tool ${data.live_shift.current_machine.tool_ref}${data.live_shift.current_machine.tool_label ? ` · ${data.live_shift.current_machine.tool_label}` : ''}` : ''}</span></h2>
+    {live && data.live_shift?.orders?.length ? <>
+      <h2 className="scope-heading order">{data.live_shift.orders.length > 1 ? 'ORDERS IN THIS SHIFT' : 'ORDER IN THIS SHIFT'} <span>{data.live_shift.orders.map(order => order.order_ref).join(' → ')}</span>{data.live_shift.detail_url && <a className="scope-link" href={data.live_shift.detail_url}>Machine detail ↗</a>}</h2>
+      <OrdersStrip live={data.live_shift} /></> : live && data.live_shift?.current_machine ? <><h2 className="scope-heading order">CURRENT ORDER <span>{data.live_shift.current_machine.order_ref || '—'}{data.live_shift.current_machine.tool_ref ? ` · tool ${data.live_shift.current_machine.tool_ref}${data.live_shift.current_machine.tool_label ? ` · ${data.live_shift.current_machine.tool_label}` : ''}` : ''}</span></h2>
     <div className="overview-current-state">
       <span>CURRENT MACHINE STATE · <b>{data.live_shift.current_machine.state === 'bezi' ? 'RUNNING' : data.live_shift.current_machine.state === 'stoji' ? 'STOPPED' : data.live_shift.current_machine.state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN'}</b></span>
       <span>CURRENT ORDER · <b>{data.live_shift.current_machine.order_ref || '—'}</b></span>
       <span>ACTUAL / PLANNED CYCLE · <b>{hourNumber(data.live_shift.current_machine.cycle_time_real_s ?? null)} / {hourNumber(data.live_shift.current_machine.cycle_time_planned_s ?? null)} s</b></span>
       <span className="cavity-cell">ORDER SCRAP BY CAVITY · % · <CavityRates live={data.live_shift} /></span>
-      {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div></>}
+      {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div></> : null}
+
     <div className="overview-table-scroll" role="region" aria-label="Hourly production overview" tabIndex={0}>
       <table className="overview-table"><colgroup><col className="col-job" /><col className="col-hour" /><col className="col-bar" /><col className="col-gauge" /><col className="col-gauge" /><col className="col-type" /><col className="col-reason" /><col className="col-comment" /></colgroup>
         <thead><tr><th>ORDER</th><th>HOUR / MACHINE</th>{piecesAvailable || !live ? <><th>OUTPUT / LOSSES<small>{unit === 'minutes' ? 'MINUTES' : 'PIECES / EQ.'}</small></th><th>OUTPUT EFFICIENCY<small>OK / IDEAL CAPACITY</small></th><th>CYCLE<small>ACTUAL / IDEAL</small></th></> : <><th>RECORDED ACTIVITY</th><th>{data.live_shift?.cycle_source === 'counter' ? 'COUNT' : 'CYCLES'}</th><th>STOPS<small>OBSERVED STOP TIME</small></th></>}<th>TYPE</th><th>REASON</th><th>COMMENT</th></tr></thead>

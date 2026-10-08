@@ -105,3 +105,51 @@ def planned_cycle_for(order: str, begin: datetime, finish: datetime, rows: list 
         return None
     overlapping = [c for c in candidates if min(c[1], finish) > max(c[0], begin)]
     return max(overlapping or candidates, key=lambda c: c[0])[2]
+
+
+def shift_orders(planned: list | None, good: dict | None, current_order: str | None, shift_end: datetime,
+                 current_cavities: list | None = None) -> list[dict]:
+    """Orders that ran in the shift, oldest first, each with scrap per cavity since the order start.
+
+    Per-product counters of BILAN_SAISIE_EQUIPE are cumulative per order, so the last declaration of a
+    product inside the shift is its order total up to the end of the shift. Cyclades gives the cavity
+    number only for the running order; for finished orders it is the rank of the product reference,
+    which matches the Cyclades numbering on every press checked.
+    """
+    last: dict[tuple[str, str], dict] = {}
+    first_seen: dict[str, datetime] = {}
+    for item in sorted((i for i in (good or {}).get("declarations", []) if isinstance(i, dict) and _time(i.get("time"))),
+                       key=lambda i: _time(i["time"])):
+        last[(str(item.get("order_ref")), item.get("product"))] = item
+        first_seen.setdefault(str(item.get("order_ref")), _time(item["time"]))
+    info: dict[str, dict] = {}
+    for row in planned or []:
+        order, start, end = row.get("order_ref"), _time(row.get("start")), _time(row.get("end"))
+        if not order or start is None or end is None:
+            continue
+        entry = info.setdefault(order, {"end": end, "start": start})
+        entry["end"], entry["start"] = max(entry["end"], end), min(entry["start"], start)
+        entry.update(tool=row.get("tool"), tool_label=row.get("tool_label"), planned_cycle_s=row.get("planned_cycle_s"))
+    orders = []
+    for order in sorted(set(first_seen) | set(info), key=lambda o: first_seen.get(o) or info[o]["start"]):
+        running = order == current_order
+        products = sorted(product for (ref, product) in last if ref == order and product)
+        if running and current_cavities:
+            rows = [{"cavity_no": c["cavity_no"], "product": c["product"], "label": c.get("label"),
+                     "qty_good": c.get("qty_good"), "qty_reject": c.get("qty_reject"),
+                     "reject_pct": c.get("reject_pct"), "target_pct": c.get("target_pct")} for c in current_cavities]
+        else:
+            rows = []
+            for number, product in enumerate(products, start=1):
+                item = last[(order, product)]
+                good_qty, reject = float(item.get("qty_good") or 0), float(item.get("qty_reject") or 0)
+                rows.append({"cavity_no": number, "product": product, "label": None, "qty_good": good_qty,
+                             "qty_reject": reject, "target_pct": None,
+                             "reject_pct": reject / (good_qty + reject) * 100 if good_qty + reject > 0 else None})
+        end = info.get(order, {}).get("end")
+        orders.append({"order_ref": order, "status": "running" if running else "finished",
+                       "tool": info.get(order, {}).get("tool"), "tool_label": info.get(order, {}).get("tool_label"),
+                       "planned_cycle_s": info.get(order, {}).get("planned_cycle_s"),
+                       "ended_at": end.isoformat() if end and not running and end < shift_end else None,
+                       "cavities": rows})
+    return orders

@@ -8,7 +8,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.cache import SnapshotCache
-from app.services.hourly_good import estimate_good, planned_cycle_for, shift_totals
+from app.services.hourly_good import estimate_good, planned_cycle_for, shift_orders, shift_totals
 from app.services.shifts import hourly_intervals, selected_shift, utc_seconds
 
 log = logging.getLogger("dashboard.euromap_shift")
@@ -305,6 +305,9 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "cycle_source": cycle_source,
                            "bin_minutes": 10 if cycle_source == "recorded" else 15,
                            "current_machine": current_status,
+                           "orders": shift_orders(planned_cycles, (cavity_data or {}).get("good_declarations"),
+                                                  (current_status or {}).get("order_ref"), end.astimezone(timezone.utc),
+                                                  cavity_rows or None),
                            "cyclades_shift": shift_totals((cavity_data or {}).get("good_declarations")),
                            "pieces_per_cycle": len(cavity_rows) or None,
                            "planned_cycle_seconds": planned_cycle if isinstance(planned_cycle, (int, float))

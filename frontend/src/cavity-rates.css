@@ -26,3 +26,14 @@
 .real-scrap-matrix .total{border-top:1px solid var(--real-border);padding-top:6px;font-weight:800;color:var(--real-ink)}
 .real-scrap-lane .lane-total{font-style:normal;font-size:11px;font-weight:800;text-align:right;color:var(--real-ink)}
 .cavity-rates>div.total{padding-right:14px;margin-right:2px;border-right:1px solid var(--real-border,var(--ov-border,#29454e))}.cavity-rates>div.total span,.cavity-rates>div.total b{color:var(--real-ink,var(--ov-ink,#edf7f5))}
+.orders-strip{display:flex;flex-direction:column;gap:1px;margin:10px 0;border:1px solid var(--real-border,var(--ov-border,#29454e));border-top:2px solid #5aa9e6;background:var(--real-border,var(--ov-border,#29454e))}
+.orders-strip .order-row{display:grid;grid-template-columns:132px minmax(0,1.5fr) minmax(0,.9fr) minmax(0,.7fr) minmax(0,2.4fr);gap:1px;background:var(--real-border,var(--ov-border,#29454e))}
+.orders-strip .order-row>div{background:var(--real-panel,var(--ov-panel,#0c2028));padding:7px 12px;min-width:0}.orders-strip .order-row:not(.running)>div:nth-child(3)+div.cavity-cell{grid-column:span 2}
+.orders-strip .order-row.finished>div{opacity:.92}.orders-strip .order-badge{display:flex;flex-direction:column;justify-content:center;gap:3px}
+.orders-strip .order-tag{align-self:flex-start;padding:1px 8px;font-size:9px;font-weight:800;letter-spacing:.12em;color:#07141b;background:#5aa9e6;border-radius:2px}.orders-strip .order-row.finished .order-tag{background:#8aa4b3}
+.orders-strip .order-badge em{font-style:normal;font-size:10px;font-weight:800;letter-spacing:.06em;color:var(--real-muted,var(--ov-muted,#91abb3))}.orders-strip .running .order-badge em{color:#42c99b}
+.orders-strip .order-cell>span{display:block;font-size:9px;font-weight:800;letter-spacing:.07em;margin-bottom:4px;color:var(--real-muted,var(--ov-muted,#91abb3))}
+.orders-strip .order-cell>strong{display:block;font-family:'Barlow Condensed',sans-serif;font-size:21px;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--real-ink,var(--ov-ink,#edf7f5))}
+.orders-strip .order-cell>small{display:block;margin-top:2px;font-size:10px;color:var(--real-muted,var(--ov-muted,#91abb3));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scope-heading .scope-link{margin-left:auto;font-weight:700;letter-spacing:.04em;color:var(--ov-good);text-decoration:none}
+@media(max-width:1100px){.orders-strip .order-row{grid-template-columns:1fr 1fr}}

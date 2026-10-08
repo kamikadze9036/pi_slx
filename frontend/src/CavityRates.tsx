@@ -2,11 +2,14 @@ import type { DashboardData } from './types';
 
 type Live = NonNullable<DashboardData['live_shift']>;
 
-// Scrap rate of every cavity for the current order; the worst one is highlighted.
-export function CavityRates({ live }: { live: Live }) {
-  const rows = (live.cavities?.rows ?? []).filter(row => row.reject_pct != null);
+export interface CavityRow { cavity_no: number; product: string; label?: string | null; qty_good: number | null;
+  qty_reject: number | null; reject_pct: number | null; target_pct?: number | null }
+
+// Scrap rate of every cavity of an order (the live one by default); the worst one is highlighted.
+export function CavityRates({ live, rows: given }: { live?: Live; rows?: CavityRow[] }) {
+  const rows = (given ?? live?.cavities?.rows ?? []).filter(row => row.reject_pct != null);
   const worstPct = rows.length ? Math.max(...rows.map(row => row.reject_pct!)) : null;
-  const fallback = live.current_machine?.worst_cavity_scrap;
+  const fallback = given ? null : live?.current_machine?.worst_cavity_scrap;
   if (!rows.length) return <strong className="cavity-rates-empty">{fallback?.reject_pct != null
     ? `${fallback.cavity_no != null ? `K${fallback.cavity_no} ` : ''}${fallback.reject_pct.toFixed(2)}%` : '—'}</strong>;
   const reject = rows.reduce((sum, row) => sum + (row.qty_reject ?? 0), 0);

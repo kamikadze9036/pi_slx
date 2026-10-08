@@ -91,3 +91,22 @@ def test_hour_of_a_non_current_order_uses_its_own_planned_cycle_and_product_coun
     row = compute_overview(base)["overview"]["hours"][0]
     assert row["capacity"]["ideal_capacity"] == pytest.approx(3600 / 40 * 2)
     assert row["production"]["count_basis"] == "estimated"
+
+
+def test_shift_orders_lists_finished_before_running_with_cavity_scrap():
+    from app.services.hourly_good import shift_orders
+    decl = lambda h, product, order, good, rej: {"time": utc(h).isoformat(), "product": product, "order_ref": order,
+                                                 "qty_good": good, "qty_reject": rej, "qty_made": good + rej, "qty_delta_reject": 0}
+    good = {"baseline": [], "declarations": [decl(6, "B2", "OF1", 90, 10), decl(6, "B1", "OF1", 95, 5),
+                                              decl(8, "B2", "OF1", 190, 10), decl(9, "C1", "OF2", 50, 0)]}
+    planned = [{"order_ref": "OF1", "tool": "MO1", "tool_label": "Panel", "planned_cycle_s": 50.0,
+                "start": utc(5).isoformat(), "end": utc(9).isoformat()},
+               {"order_ref": "OF2", "tool": "MO2", "tool_label": "Cover", "planned_cycle_s": 40.0,
+                "start": utc(5).isoformat(), "end": utc(14).isoformat()}]
+    orders = shift_orders(planned, good, "OF2", utc(14))
+    assert [o["order_ref"] for o in orders] == ["OF1", "OF2"]
+    assert [o["status"] for o in orders] == ["finished", "running"]
+    first = orders[0]
+    assert first["ended_at"] == utc(9).isoformat() and first["tool"] == "MO1"
+    assert [(c["cavity_no"], c["product"]) for c in first["cavities"]] == [(1, "B1"), (2, "B2")]
+    assert first["cavities"][1]["reject_pct"] == pytest.approx(5.0)   # last declaration 190 good / 10 scrap

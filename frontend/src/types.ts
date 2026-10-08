@@ -30,6 +30,7 @@ export interface DashboardData {
     stop_source: 'cycles' | 'histo_events' | null;
     downtime_available: boolean; cycles_endpoint_available: boolean; cycles_available: boolean;
     cycle_source: 'recorded' | 'counter' | null; bin_minutes: number;
+    orders?: ShiftOrder[];
     cyclades_shift?: { made: number; ok: number; scrap: number; delta_scrap: number; as_of: string; products: number } | null;
     current_machine: { state?: string | null; order_ref?: string | null;
       cycle_time_real_s?: number | null; cycle_time_planned_s?: number | null;
@@ -55,6 +56,12 @@ export interface Shift { id: string; name: string; start_time: string; end_time:
   days: number[]; active: boolean }
 export interface Display { id: string; name: string; machine_id: string;
   dashboard_type: string; theme: 'dark' | 'light'; active: boolean; online: boolean; last_seen: string | null }
+export interface ShiftOrder {
+  order_ref: string; status: 'running' | 'finished'; tool: string | null; tool_label: string | null;
+  planned_cycle_s: number | null; ended_at: string | null;
+  cavities: { cavity_no: number; product: string; label?: string | null; qty_good: number | null;
+    qty_reject: number | null; reject_pct: number | null; target_pct?: number | null }[];
+}
 export interface OverviewCapacity { ideal_capacity: number | null; without_scrap_or_stops: number | null; recoverable_output: number | null }
 export interface OverviewResult {
   estimate?: { hours_covered: number; hours_total: number };

@@ -3,6 +3,7 @@ import type { DashboardData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
 import { CavityRates, ScrapLanes, scrapByCavity } from '../CavityRates';
+import { OrdersStrip } from '../OrdersStrip';
 
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const number = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US').format(value);
@@ -119,7 +120,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
           <button type="button" aria-pressed={splitView} onClick={() => chooseView(true)}>BY CAVITY</button></div>}
         {live.detail_url && <a href={live.detail_url}>EUROMAP63 MACHINE DETAIL ↗</a>}</div></section>
     </div>
-    {live.current_machine && <section className="real-current-machine scope-order" aria-label="Current machine state"><b className="scope-tag order">CURRENT ORDER</b>
+    {live.orders?.length ? <OrdersStrip live={live} /> : live.current_machine && <section className="real-current-machine scope-order" aria-label="Current machine state"><b className="scope-tag order">CURRENT ORDER</b>
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
       <div><span>ORDER · TOOL</span><strong>{live.current_machine.order_ref || '—'}</strong><em className="tool-line" title={live.current_machine.tool_label || ''}>{live.current_machine.tool_ref ? `${live.current_machine.tool_ref}${live.current_machine.tool_label ? ` · ${live.current_machine.tool_label}` : ''}` : 'Tool unavailable'}</em></div>
       <div><span>ACTUAL / PLANNED CYCLE</span><strong>{seconds(live.current_machine.cycle_time_real_s)} / {seconds(live.current_machine.cycle_time_planned_s)}</strong></div>
