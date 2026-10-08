@@ -117,6 +117,8 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
   const query = search.trim().toLocaleLowerCase('en-US');
   const filtered = rows.filter(row => [hourClock(row.start), hourClock(row.end), data.machine.name, data.production?.order,
     ...row.details.map(detail => detail.reason), ...row.segments.map(segment => segment.label)].join(' ').toLocaleLowerCase('en-US').includes(query));
+  const stopEvents = data.live_shift?.downtime_events ?? data.downtime_events ?? [];
+  const stopTotalSeconds = stopEvents.reduce((sum, event) => sum + event.seconds, 0);
   const stale = offline || data.status === 'stale';
   return <main className={`screen hourly-overview theme-${displayTheme(data.display.theme)}`}>
     <div className="overview-sticky">
@@ -163,6 +165,13 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
           <OverviewRow key={`${data.machine.id}-${data.shift!.start}-total`} row={total} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} /></tbody>
       </table>
     </div>
+    <section className="overview-stops" aria-label="Recorded stop reasons">
+      <div className="overview-stops-head"><div><span className="overview-stops-eyebrow">STOP DETAIL</span><h2>Recorded stop reasons</h2></div>
+        <div className="overview-stops-total"><span>TOTAL</span><strong>{stopEvents.length} {stopEvents.length === 1 ? 'stop' : 'stops'} · {hourDuration(stopTotalSeconds)}</strong></div></div>
+      {stopEvents.length ? <div className="overview-stop-list">{stopEvents.map((event, index) => <div key={`${event.start}-${index}`}>
+        <span>{hourClock(event.start)}–{hourClock(event.end)}</span><strong title={event.reason}>{event.reason}</strong><em title={event.comment || ''}>{event.comment || ''}</em><b>{hourDuration(event.seconds)}</b></div>)}</div>
+        : <p className="overview-stops-empty">No stop intervals returned for this shift. This does not confirm uninterrupted production.</p>}
+    </section>
     <div className="overview-legend">{(piecesAvailable ? [...compositionOrder] : live ? [{ key: 'good', label: data.live_shift?.cycle_source === 'counter' ? 'Counter increase' : 'Recorded cycles' }, { key: 'downtime', label: 'Observed stop time' }, { key: 'scrap', label: 'Declared scrap' }] : [compositionOrder[2], { key: 'unknown', label: 'Unverified time' }]).map(category =>
       <span key={category.key}><i className={category.key} />{category.label}</span>)}{unit === 'minutes' && piecesAvailable && <span><i className="future" />Future time</span>}</div>
     <p className="overview-note">Output / losses share one scale per hour: OK pieces and scrap use ideal-cycle time, stops use observed duration, slow running is the remaining planned time; in pieces mode time losses are ideal-rate equivalents. Without scrap / stops = OK + scrap + stopped time recovered at the achieved running rate (a calculated counterfactual, not a measurement); ideal capacity is planned time at the ideal cycle. Efficiency is output / ideal capacity and is labelled OEE only when its inputs are verified; values above 100% are kept as calculated. {live ? 'Recorded cycles are not OK pieces; unmarked time does not confirm running. ' : ''}“—” means unavailable, not zero. The total covers the full shift even while searching.</p>

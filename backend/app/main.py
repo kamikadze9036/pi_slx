@@ -20,8 +20,11 @@ from app.services.shifts import InvalidShiftSelection, active_shift
 
 class JsonFormatter(logging.Formatter):
     def format(self, record):
-        return json.dumps({"time": datetime.now(timezone.utc).isoformat(), "level": record.levelname,
-                           "message": record.getMessage(), "logger": record.name})
+        entry = {"time": datetime.now(timezone.utc).isoformat(), "level": record.levelname,
+                 "message": record.getMessage(), "logger": record.name}
+        if record.exc_info:
+            entry["exception"] = self.formatException(record.exc_info)
+        return json.dumps(entry)
 
 handler = logging.StreamHandler()
 handler.setFormatter(JsonFormatter())
