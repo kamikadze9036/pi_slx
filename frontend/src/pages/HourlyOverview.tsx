@@ -32,14 +32,15 @@ function RecordedActivity({ row, maxCycles, maxScrap }: { row: OverviewHour; max
   </div>)}</div>;
 }
 
-function OverviewRow({ row, data, unit, maxCycles, maxScrap }: { row: OverviewHour; data: ImprintData; unit: HourUnit; maxCycles: number; maxScrap: number }) {
+function OverviewRow({ row, data, unit, maxCycles, maxScrap, recordedMode }: { row: OverviewHour; data: ImprintData; unit: HourUnit; maxCycles: number; maxScrap: number; recordedMode: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const live = !!data.live_shift;
   const details = hourDetailSummary(row, live, unit);
   const total = Math.max(1, row.segments.reduce((sum, segment) => sum + segment.value, 0));
   const metrics = row.metrics;
   // Without verified production metrics the recorded activity bars and count/stop gauges stay as in the original view.
-  const recorded = live && !metrics?.composition;
+  // Recorded-activity layout only when the whole shift has no production metrics; a single hour without them keeps the common layout.
+  const recorded = recordedMode;
   const delta = metrics?.cycle?.delta_seconds ?? null;
   const cycleText = delta == null ? '—' : `${delta > 0 ? '+' : ''}${hourNumber(Math.round(delta * 10) / 10)}s`;
   const ratio = metrics?.efficiency?.ratio ?? null;
@@ -171,9 +172,9 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
     <div className="overview-table-scroll" role="region" aria-label="Hourly production overview" tabIndex={0}>
       <table className="overview-table"><colgroup><col className="col-job" /><col className="col-hour" /><col className="col-bar" /><col className="col-gauge" /><col className="col-gauge" /><col className="col-type" /><col className="col-reason" /><col className="col-comment" /></colgroup>
         <thead><tr><th>ORDER</th><th>HOUR / MACHINE</th>{piecesAvailable || !live ? <><th>OUTPUT / LOSSES<small>{unit === 'minutes' ? 'MINUTES' : 'PIECES / EQ.'}</small></th><th>OUTPUT EFFICIENCY<small>OK / IDEAL CAPACITY</small></th><th>CYCLE<small>ACTUAL / IDEAL</small></th></> : <><th>RECORDED ACTIVITY</th><th>{data.live_shift?.cycle_source === 'counter' ? 'COUNT' : 'CYCLES'}</th><th>STOPS<small>OBSERVED STOP TIME</small></th></>}<th>TYPE</th><th>REASON</th><th>COMMENT</th></tr></thead>
-        <tbody>{filtered.map(row => <OverviewRow key={`${data.machine.id}-${row.id}`} row={row} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} />)}
+        <tbody>{filtered.map(row => <OverviewRow key={`${data.machine.id}-${row.id}`} row={row} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} recordedMode={live && !piecesAvailable} />)}
           {filtered.length === 0 && <tr><td className="overview-no-results" colSpan={8}>No hours match this search. <button type="button" onClick={() => setSearch('')}>Clear search</button></td></tr>}
-          <OverviewRow key={`${data.machine.id}-${data.shift!.start}-total`} row={total} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} /></tbody>
+          <OverviewRow key={`${data.machine.id}-${data.shift!.start}-total`} row={total} data={data} unit={unit} maxCycles={maxCycles} maxScrap={maxScrap} recordedMode={live && !piecesAvailable} /></tbody>
       </table>
     </div>
     <section className="overview-stops" aria-label="Recorded stop reasons">
