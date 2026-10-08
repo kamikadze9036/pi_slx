@@ -30,6 +30,7 @@ export interface DashboardData {
     stop_source: 'cycles' | 'histo_events' | null;
     downtime_available: boolean; cycles_endpoint_available: boolean; cycles_available: boolean;
     cycle_source: 'recorded' | 'counter' | null; bin_minutes: number;
+    cyclades_shift?: { made: number; ok: number; scrap: number; delta_scrap: number; as_of: string; products: number } | null;
     current_machine: { state?: string | null; order_ref?: string | null;
       cycle_time_real_s?: number | null; cycle_time_planned_s?: number | null;
       stop_reason?: string | null; tool_ref?: string | null; tool_label?: string | null;

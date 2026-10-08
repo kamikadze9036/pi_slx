@@ -55,3 +55,13 @@ def test_live_hour_with_estimate_gets_production_metrics_marked_estimated():
 def test_live_hour_of_another_order_stays_unavailable():
     row = compute_overview(live_base({"good_orders": ["OF0"]}))["overview"]["hours"][0]
     assert row["capacity"] is None and row["production"] is None
+
+
+def test_shift_totals_use_baseline_of_the_same_order_and_expose_delta_scrap():
+    from app.services.hourly_good import shift_totals
+    row = lambda h, m, made, ok, rej, delta, order="OF1": {**declaration(h, m, ok, order=order),
+                                                          "qty_made": made, "qty_reject": rej, "qty_delta_reject": delta}
+    good = {"baseline": [row(5, 0, 100, 90, 6, 4)], "declarations": [row(7, 0, 150, 120, 8, 22), row(6, 0, 130, 105, 7, 18)]}
+    totals = shift_totals(good)
+    assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (50, 30, 2, 18)
+    assert shift_totals({"baseline": [], "declarations": []}) is None

@@ -120,6 +120,7 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
     ...row.details.map(detail => detail.reason), ...row.segments.map(segment => segment.label)].join(' ').toLocaleLowerCase('en-US').includes(query));
   const stopEvents = data.live_shift?.downtime_events ?? data.downtime_events ?? [];
   const stopTotalSeconds = stopEvents.reduce((sum, event) => sum + event.seconds, 0);
+  const cyclades = data.live_shift?.cyclades_shift ?? null;
   const shiftScrap = data.live_shift ? scrapByCavity(data.live_shift) : null;
   const stale = offline || data.status === 'stale';
   return <main className={`screen hourly-overview theme-${displayTheme(data.display.theme)}`}>
@@ -141,18 +142,21 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
           </div></div></section>
     </div>
     <h2 className="scope-heading shift">SHIFT RESULTS <span>{data.shift!.name} · {hourClock(data.shift!.start)}–{hourClock(data.shift!.end)}</span></h2>
-    <section className="overview-live-kpis" aria-label="Shift potential">
+    <section className="overview-live-kpis overview-shift-ribbon" aria-label="Shift results">
       <div title={headline.estimated ? 'Interpolated from carton declarations; hours without full declaration coverage are excluded' : undefined}><span>OK PIECES{headline.estimated ? ' · EST.' : ''}</span><strong>{pcs(headline.ok)}</strong>{headline.estimated && headline.coverage && <small>est. · {headline.coverage.hours_covered} / {headline.coverage.hours_total} hours</small>}</div>
       <div title="OK + scrap + stopped time recovered at the achieved running rate. A calculated counterfactual, not a measured count."><span>WITHOUT SCRAP / STOPS</span><strong>{pcs(headline.withoutLosses)}</strong></div>
       <div><span>RECOVERABLE OUTPUT</span><strong>{headline.recoverable == null ? '—' : `+${pcs(headline.recoverable)}`}</strong></div>
       <div title="Planned production time at the ideal cycle"><span>IDEAL CAPACITY</span><strong>{pcs(headline.idealCapacity)}</strong></div>
-    </section>
-    <section className="overview-live-kpis overview-secondary" aria-label="Recorded shift totals">
       <div><span>{data.live_shift?.cycle_source === 'counter' ? 'COUNTER INCREASE' : live ? 'RECORDED CYCLES' : 'RECORDED COUNT'}</span><strong>{hourNumber(total.count)}</strong></div>
       <div><span>OBSERVED STOPS</span><strong>{hourNumber(total.stopCount)}</strong></div>
       <div><span>OBSERVED STOP TIME</span><strong>{hourStopTime(total.stopSeconds)}</strong></div>
       <div className="scrap-kpi"><span>SHIFT SCRAP</span><div className="scrap-kpi-value"><strong>{hourNumber(total.scrap)} pcs</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div></div>
     </section>
+    {cyclades && <p className="overview-cyclades" title="Cyclades books pieces that were made but not yet declared as OK or scrap (a carton is declared when full) as delta scrap, and the figure changes again once the carton is declared.">
+      <span>CYCLADES SHIFT · DECLARED UP TO {hourClock(cyclades.as_of)}</span>
+      <span>OK <b>{hourNumber(cyclades.ok)}</b></span><span>SCRAP <b>{hourNumber(cyclades.scrap)}</b></span>
+      <span>UNDECLARED (Δ SCRAP) <b>{hourNumber(cyclades.delta_scrap)}</b></span><span>MADE <b>{hourNumber(cyclades.made)}</b></span>
+      {headline.estimated && headline.coverage && <span className="overview-cyclades-estimate">OUR ESTIMATE · {headline.coverage.hours_covered}/{headline.coverage.hours_total} H <b>~{hourNumber(Math.round(headline.ok ?? 0))}</b> OK</span>}</p>}
     {live && data.live_shift?.current_machine && <><h2 className="scope-heading order">CURRENT ORDER <span>{data.live_shift.current_machine.order_ref || '—'}{data.live_shift.current_machine.tool_ref ? ` · tool ${data.live_shift.current_machine.tool_ref}${data.live_shift.current_machine.tool_label ? ` · ${data.live_shift.current_machine.tool_label}` : ''}` : ''}</span></h2>
     <div className="overview-current-state">
       <span>CURRENT MACHINE STATE · <b>{data.live_shift.current_machine.state === 'bezi' ? 'RUNNING' : data.live_shift.current_machine.state === 'stoji' ? 'STOPPED' : data.live_shift.current_machine.state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN'}</b></span>

@@ -61,3 +61,29 @@ def estimate_good(hours: list[tuple[datetime, datetime]], good: dict | None) -> 
         out.append({"good": total if touched and valid else None,
                     "orders": sorted(orders) if touched and valid else []})
     return out
+
+
+def shift_totals(good: dict | None) -> dict | None:
+    """Cyclades' own shift figures: last declaration of each product minus its baseline.
+
+    Cyclades books pieces made (cycle based) but not yet declared as OK or scrap as delta scrap,
+    so made = ok + scrap + delta_scrap; delta_scrap shrinks again when a carton is declared.
+    """
+    if not good or not good.get("declarations"):
+        return None
+    last: dict = {}
+    for item in sorted((i for i in good["declarations"] if isinstance(i, dict) and _time(i.get("time"))),
+                       key=lambda i: _time(i["time"])):
+        last[item.get("product")] = item
+    baselines = {i.get("product"): i for i in good.get("baseline", []) if isinstance(i, dict)}
+    keys = (("made", "qty_made"), ("ok", "qty_good"), ("scrap", "qty_reject"), ("delta_scrap", "qty_delta_reject"))
+    totals = {name: 0.0 for name, _ in keys}
+    for product, item in last.items():
+        base = baselines.get(product)
+        if base and base.get("order_ref") != item.get("order_ref"):
+            base = None
+        for name, column in keys:
+            value = float(item.get(column) or 0)
+            start = float(base.get(column) or 0) if base else 0.0
+            totals[name] += value - start if value >= start else value
+    return {**totals, "as_of": max(i["time"] for i in last.values()), "products": len(last)}
