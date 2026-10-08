@@ -15,11 +15,11 @@ export function OrdersStrip({ live }: { live: Live }) {
       <em>{order.status === 'running' ? 'RUNNING NOW' : order.ended_at ? `FINISHED ${clock(order.ended_at)}` : 'FINISHED'}</em></div>
     <div className="order-cell"><span>ORDER · TOOL</span><strong>{order.order_ref}</strong>
       <small title={order.tool_label || ''}>{order.tool ? `${order.tool}${order.tool_label ? ` · ${order.tool_label}` : ''}` : 'Tool unavailable'}</small></div>
+    <div className="order-cell" title={order.status === 'running' && order.remaining ? `By quantity at the planned cycle: ${hours(order.remaining.hours)} · by planned order duration minus time worked: ${hours(order.remaining.hours_by_plan)}` : undefined}>
+      <span>EXPECTED TIME TO END</span><strong>{order.status === 'running' && order.remaining?.hours != null ? `~${hours(order.remaining.hours)}` : '—'}</strong>
+      {order.status === 'running' && order.remaining?.pieces_left != null && <small>{new Intl.NumberFormat('en-US').format(order.remaining.pieces_left)} pcs left</small>}</div>
     <div className="order-cell"><span>{order.status === 'running' ? 'ACTUAL / PLANNED CYCLE' : 'PLANNED CYCLE'}</span>
       <strong>{order.status === 'running' && machine ? `${seconds(machine.cycle_time_real_s)} / ${seconds(machine.cycle_time_planned_s ?? order.planned_cycle_s)}` : seconds(order.planned_cycle_s)}</strong></div>
-    {order.status === 'running' && <div className="order-cell" title={order.remaining ? `By quantity at the planned cycle: ${hours(order.remaining.hours)} · by planned order duration minus time worked: ${hours(order.remaining.hours_by_plan)}` : undefined}>
-      <span>EXPECTED TIME TO END</span><strong>{order.remaining?.hours != null ? `~${hours(order.remaining.hours)}` : '—'}</strong>
-      {order.remaining?.pieces_left != null && <small>{new Intl.NumberFormat('en-US').format(order.remaining.pieces_left)} pcs left</small>}</div>}
     <div className="order-cell cavity-cell"><span>ORDER SCRAP BY CAVITY · % SINCE ORDER START</span><CavityRates rows={order.cavities} /></div>
   </div>)}</div>;
 }
