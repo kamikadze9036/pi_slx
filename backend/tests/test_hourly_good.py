@@ -34,9 +34,12 @@ def test_order_change_breaks_the_segment():
 def test_missing_declarations_return_none():
     assert estimate_good(HOURS, None)[0]["good"] is None
 
-def live_base(hour_overrides=None):
-    hour = {"start": "2026-10-08T06:00:00+00:00", "end": "2026-10-08T07:00:00+00:00", "elapsed_seconds": 3600,
-            "cycle_count": 100, "stop_seconds": 600, "stop_count": 1, "good_estimate": 184.0, "good_orders": ["OF1"],
+def live_base(hour_overrides=None, parts=None):
+    start, end = "2026-10-08T06:00:00+00:00", "2026-10-08T07:00:00+00:00"
+    hour = {"start": start, "end": end, "elapsed_seconds": 3600, "cycle_count": 100, "stop_seconds": 600, "stop_count": 1,
+            "good_estimate": 184.0, "good_orders": ["OF1"],
+            "good_parts": parts or [{"order": "OF1", "good": 184.0, "products": 4, "start": start, "end": end,
+                                     "planned_cycle_seconds": 60.0}],
             **(hour_overrides or {})}
     return {"status": "ok", "data_source": "euromap63",
             "live_shift": {"hours": [hour], "downtime_events": [], "scrap_declarations": [], "pieces_per_cycle": 4,
@@ -52,28 +55,41 @@ def test_live_hour_with_estimate_gets_production_metrics_marked_estimated():
     assert overview["total"]["production"]["count_basis"] == "estimated"
     assert overview["total"]["estimate"] == {"hours_covered": 1, "hours_total": 1}
 
-def test_live_hour_of_another_order_stays_unavailable():
-    row = compute_overview(live_base({"good_orders": ["OF0"]}))["overview"]["hours"][0]
+def test_live_hour_of_another_order_without_planned_cycle_stays_unavailable():
+    parts = [{"order": "OF0", "good": 100.0, "products": 4, "start": "2026-10-08T06:00:00+00:00",
+              "end": "2026-10-08T07:00:00+00:00", "planned_cycle_seconds": None}]
+    row = compute_overview(live_base(parts=parts))["overview"]["hours"][0]
     assert row["capacity"] is None and row["production"] is None
 
+def test_hour_of_a_non_current_order_uses_its_own_planned_cycle_and_product_count():
+    parts = [{"order": "OF0", "good": 100.0, "products": 2, "start": "2026-10-08T06:00:00+00:00",
+              "end": "2026-10-08T07:00:00+00:00", "planned_cycle_seconds": 40.0}]
+    row = compute_overview(live_base(parts=parts))["overview"]["hours"][0]
+    assert row["capacity"]["ideal_capacity"] == pytest.approx(3600 / 40 * 2)
+    assert row["production"]["count_basis"] == "estimated"
 
-def test_shift_totals_use_baseline_of_the_same_order_and_expose_delta_scrap():
-    from app.services.hourly_good import shift_totals
-    row = lambda h, m, made, ok, rej, delta, order="OF1": {**declaration(h, m, ok, order=order),
-                                                          "qty_made": made, "qty_reject": rej, "qty_delta_reject": delta}
-    good = {"baseline": [row(5, 0, 100, 90, 6, 4)], "declarations": [row(7, 0, 150, 120, 8, 22), row(6, 0, 130, 105, 7, 18)]}
-    totals = shift_totals(good)
-    assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (50, 30, 2, 18)
-    assert shift_totals({"baseline": [], "declarations": []}) is None
+def test_changeover_hour_is_computed_per_order_and_summed():
+    parts = [{"order": "OF0", "good": 50.0, "products": 2, "start": "2026-10-08T06:00:00+00:00",
+              "end": "2026-10-08T06:30:00+00:00", "planned_cycle_seconds": 40.0},
+             {"order": "OF1", "good": 90.0, "products": 4, "start": "2026-10-08T06:30:00+00:00",
+              "end": "2026-10-08T07:00:00+00:00", "planned_cycle_seconds": 60.0}]
+    row = compute_overview(live_base(parts=parts))["overview"]["hours"][0]
+    assert row["capacity"]["ideal_capacity"] == pytest.approx(1800 / 40 * 2 + 1800 / 60 * 4)
+    assert row["production"]["good_count"] == pytest.approx(140)
+    assert sum(v["seconds"] for v in row["composition"].values()) == pytest.approx(3600)
 
 
-def test_delta_scrap_may_decrease_when_cartons_are_declared():
-    from app.services.hourly_good import shift_totals
-    row = lambda h, made, ok, rej, delta: {**declaration(h, 0, ok), "qty_made": made, "qty_reject": rej, "qty_delta_reject": delta}
-    totals = shift_totals({"baseline": [row(5, 100, 80, 5, 15)], "declarations": [row(7, 160, 146, 6, 8)]})
-    assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (60, 66, 1, -7)
-    assert totals["made"] == totals["ok"] + totals["scrap"] + totals["delta_scrap"]
-
+def test_estimator_covers_a_changeover_hour_with_order_start_and_end_events():
+    from app.services.hourly_good import add_order_bounds
+    declarations = [declaration(7, 10, 46, "A", "NEW")]
+    good = {"baseline": [declaration(5, 30, 900, "A", "OLD")], "declarations": [declaration(6, 10, 940, "A", "OLD"), *declarations]}
+    progress = {"OLD": {"launched_at": utc(0).isoformat(), "products": [{"product": "A", "qty_good": 1000}]},
+                "NEW": {"launched_at": utc(6, 30).isoformat(), "products": []}}
+    planned = [{"order_ref": "OLD", "start": utc(0).isoformat(), "end": utc(6, 30).isoformat()}]
+    result = estimate_good([(utc(6), utc(7))], add_order_bounds(good, progress, planned, "NEW", utc(14)))[0]
+    assert result["orders"] == ["OLD", "NEW"]
+    assert [p["good"] for p in result["parts"]] == pytest.approx([70.0, 46 * 30 / 40])
+    assert result["parts"][0]["end"] == utc(6, 30).isoformat() and result["parts"][1]["start"] == utc(6, 30).isoformat()
 
 def test_planned_cycle_prefers_the_row_overlapping_the_hour():
     from app.services.hourly_good import planned_cycle_for
@@ -84,13 +100,6 @@ def test_planned_cycle_prefers_the_row_overlapping_the_hour():
     assert planned_cycle_for("OF1", utc(20), utc(21), rows) == 55.0   # no overlap: latest row
     assert planned_cycle_for("OF3", utc(7), utc(8), rows) is None
     assert planned_cycle_for("OF1", utc(7), utc(8), None) is None
-
-
-def test_hour_of_a_non_current_order_uses_its_own_planned_cycle_and_product_count():
-    base = live_base({"good_orders": ["OF0"], "good_products": 2, "planned_cycle_seconds": 40.0})
-    row = compute_overview(base)["overview"]["hours"][0]
-    assert row["capacity"]["ideal_capacity"] == pytest.approx(3600 / 40 * 2)
-    assert row["production"]["count_basis"] == "estimated"
 
 
 def test_shift_orders_lists_finished_before_running_with_cavity_scrap():

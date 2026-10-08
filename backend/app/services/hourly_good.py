@@ -19,7 +19,8 @@ def _time(value) -> datetime | None:
         return None
 
 
-def _segments(good: dict) -> dict[str, list[tuple[datetime, datetime, float, str]]]:
+def _segments(good: dict) -> list[tuple[str, str, datetime, datetime, float]]:
+    """(product, order, start, end, increase) between consecutive events of the same order."""
     products = {item.get("product") for item in good.get("declarations", []) if isinstance(item, dict)}
     events: dict[str, list[tuple[datetime, float, str]]] = {}
     for item in [*good.get("baseline", []), *good.get("declarations", [])]:
@@ -29,39 +30,93 @@ def _segments(good: dict) -> dict[str, list[tuple[datetime, datetime, float, str
         if at is None or isinstance(qty, bool) or not isinstance(qty, (int, float)):
             continue
         events.setdefault(item["product"], []).append((at, float(qty), str(item.get("order_ref"))))
-    result = {}
+    result = []
     for product, rows in events.items():
         rows.sort(key=lambda row: row[0])
-        result[product] = [(a[0], b[0], b[1] - a[1], a[2]) for a, b in zip(rows, rows[1:])
-                           if a[2] == b[2] and b[1] >= a[1] and b[0] > a[0]]
+        result += [(product, a[2], a[0], b[0], b[1] - a[1]) for a, b in zip(rows, rows[1:])
+                   if a[2] == b[2] and b[1] >= a[1] and b[0] > a[0]]
     return result
 
 
+def add_order_bounds(good: dict | None, progress: dict | None, planned: list | None, running_order: str | None,
+                     window_end: datetime) -> dict | None:
+    """Add the start (0 pieces) and the end (final pieces) of orders so a changeover hour is covered.
+
+    Counters of a new order start at 0 when it is launched, and a finished order ends with the final
+    LIGOF count at the end of its last shift balance row. Both are approximations (production does not
+    start the instant an order is launched), so hours using them stay estimates.
+    """
+    if not good or not progress:
+        return good
+    declarations = [i for i in good.get("declarations", []) if isinstance(i, dict) and _time(i.get("time"))]
+    baseline = list(good.get("baseline", []))
+    extra = []
+    ends = {}
+    for row in planned or []:
+        end = _time(row.get("end")) if isinstance(row, dict) else None
+        if end and row.get("order_ref"):
+            ends[row["order_ref"]] = max(ends.get(row["order_ref"], end), end)
+    for (order, product) in {(str(i.get("order_ref")), i.get("product")) for i in declarations}:
+        info = progress.get(order) or {}
+        mine = [i for i in declarations if str(i.get("order_ref")) == order and i.get("product") == product]
+        first = min(_time(i["time"]) for i in mine)
+        launched = _time(info.get("launched_at"))
+        if launched and launched < first and not any(
+                i.get("product") == product and str(i.get("order_ref")) == order for i in baseline):
+            extra.append({"time": launched.isoformat(), "product": product, "order_ref": order, "qty_good": 0.0})
+        end = ends.get(order)
+        final = next((p.get("qty_good") for p in info.get("products") or [] if p.get("product") == product), None)
+        last = max(mine, key=lambda i: _time(i["time"]))
+        if (order != running_order and end and end <= window_end and isinstance(final, (int, float))
+                and not isinstance(final, bool) and final >= float(last.get("qty_good") or 0) and end > _time(last["time"])):
+            extra.append({"time": end.isoformat(), "product": product, "order_ref": order, "qty_good": float(final)})
+    # Only meant for estimate_good: extra events are added next to the baseline, declarations stay untouched
+    return {**good, "baseline": baseline + extra}
+
+
 def estimate_good(hours: list[tuple[datetime, datetime]], good: dict | None) -> list[dict]:
-    """One {"good": float | None, "orders": [..]} per (begin, finish) UTC hour interval."""
+    """Per (begin, finish) UTC hour: estimated OK pieces, the orders involved and a part per order.
+
+    Each order that ran in the hour covers its own time range (every product of it must be covered over
+    that range) and the ranges together must cover the hour, so a changeover between two orders is fine
+    but the running hour after the last declaration is not.
+    """
+    empty = {"good": None, "orders": [], "products": 0, "parts": []}
     if not good:
-        return [{"good": None, "orders": [], "products": 0} for _ in hours]
+        return [dict(empty) for _ in hours]
     segments = _segments(good)
     out = []
     for begin, finish in hours:
-        total, orders, valid, touched, products = 0.0, set(), True, False, 0
-        for rows in segments.values():
-            covered = 0.0
-            for start, end, delta, order in rows:
-                overlap = (min(end, finish) - max(start, begin)).total_seconds()
-                if overlap <= 0:
-                    continue
-                covered += overlap
-                total += delta * overlap / (end - start).total_seconds()
-                orders.add(order)
-            if covered > 0:
-                touched = True
-                products += 1
-                if covered < (finish - begin).total_seconds() - TOLERANCE_SECONDS:
-                    valid = False
-        out.append({"good": total if touched and valid else None,
-                    "orders": sorted(orders) if touched and valid else [],
-                    "products": products if touched and valid else 0})
+        per_order: dict[str, dict] = {}
+        for product, order, start, end, delta in segments:
+            lo, hi = max(start, begin), min(end, finish)
+            overlap = (hi - lo).total_seconds()
+            if overlap <= 0:
+                continue
+            entry = per_order.setdefault(order, {"products": {}, "start": lo, "end": hi, "good": 0.0})
+            entry["products"][product] = entry["products"].get(product, 0.0) + overlap
+            entry["good"] += delta * overlap / (end - start).total_seconds()
+            entry["start"], entry["end"] = min(entry["start"], lo), max(entry["end"], hi)
+        valid = bool(per_order)
+        for entry in per_order.values():
+            length = (entry["end"] - entry["start"]).total_seconds()
+            if any(covered < length - TOLERANCE_SECONDS for covered in entry["products"].values()):
+                valid = False
+        cursor = begin
+        for entry in sorted(per_order.values(), key=lambda e: e["start"]):
+            if (entry["start"] - cursor).total_seconds() > TOLERANCE_SECONDS:
+                valid = False
+            cursor = max(cursor, entry["end"])
+        if (finish - cursor).total_seconds() > TOLERANCE_SECONDS:
+            valid = False
+        if not valid:
+            out.append(dict(empty))
+            continue
+        parts = [{"order": order, "good": entry["good"], "products": len(entry["products"]),
+                  "start": entry["start"].isoformat(), "end": entry["end"].isoformat()}
+                 for order, entry in sorted(per_order.items(), key=lambda item: item[1]["start"])]
+        out.append({"good": sum(p["good"] for p in parts), "orders": [p["order"] for p in parts],
+                    "products": max(p["products"] for p in parts), "parts": parts})
     return out
 
 

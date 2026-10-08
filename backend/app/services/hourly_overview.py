@@ -31,19 +31,47 @@ def _composition(i: SegmentInput, r: SegmentResult) -> dict:
     return result
 
 
-def _live_inputs(live: dict, hour: dict, raw: dict, elapsed: float) -> SegmentInput | None:
-    """Segment input for a live (Euromap63) hour whose OK pieces could be estimated, else None."""
-    good, scrap, stops = hour.get("good_estimate"), raw["declared_scrap"], raw["stop_seconds"]
-    orders = hour.get("good_orders") or []
-    cycle, per_cycle = hour.get("planned_cycle_seconds"), hour.get("good_products")
-    if cycle is None and orders == [live.get("current_order")]:
-        # Fallback: planned cycle and cavity count of the machine's current order
-        cycle, per_cycle = live.get("planned_cycle_seconds"), per_cycle or live.get("pieces_per_cycle")
-    # One order per hour: a changeover hour mixes cycles and stays unavailable.
-    if good is None or scrap is None or stops is None or not cycle or not per_cycle or len(orders) != 1:
+def _overlap_seconds(start: str, end: str, begin: datetime, finish: datetime) -> float:
+    lo, hi = max(datetime.fromisoformat(start), begin), min(datetime.fromisoformat(end), finish)
+    return max(0.0, (hi - lo).total_seconds())
+
+
+def _live_inputs(live: dict, hour: dict, raw: dict) -> list[SegmentInput] | None:
+    """One segment input per order that ran in a live (Euromap63) hour with an OK-piece estimate, else None.
+
+    Every order has its own planned cycle, cavity count, stops and declared scrap inside its time range,
+    so a changeover hour is computed as two rate segments and summed afterwards.
+    """
+    declared = live.get("scrap_declarations")
+    parts = hour.get("good_parts") or []
+    if hour.get("good_estimate") is None or declared is None or raw["stop_seconds"] is None or not parts:
         return None
-    # Interpolation noise can push an hour slightly above the ideal rate; that is not an inconsistency.
-    return SegmentInput(elapsed, good, scrap, stops, 0, cycle, per_cycle, 0, gain_verified=True)
+    inputs = []
+    for part in parts:
+        begin, finish = datetime.fromisoformat(part["start"]), datetime.fromisoformat(part["end"])
+        cycle, per_cycle = part.get("planned_cycle_seconds"), part.get("products")
+        if cycle is None and part["order"] == live.get("current_order"):
+            # Fallback: planned cycle of the machine's current order
+            cycle = live.get("planned_cycle_seconds")
+        if not cycle or not per_cycle:
+            return None
+        stops = sum(_overlap_seconds(event["start"], event["end"], begin, finish) for event in live.get("downtime_events") or [])
+        scrap = sum(d["quantity"] for d in declared if _inside(d["time"], begin, finish))
+        # Interpolation noise can push a part slightly above the ideal rate; that is not an inconsistency.
+        inputs.append(SegmentInput((finish - begin).total_seconds(), part["good"], scrap, stops, 0, cycle, per_cycle, 0,
+                                   gain_verified=True))
+    return inputs
+
+
+def _sum_compositions(parts: list[dict]) -> dict:
+    total: dict = {}
+    for part in parts:
+        for key, value in part.items():
+            old = total.setdefault(key, {"seconds": 0.0, "pieces": None if value["pieces"] is None else 0.0})
+            old["seconds"] += value["seconds"]
+            if value["pieces"] is not None:
+                old["pieces"] = (old["pieces"] or 0.0) + value["pieces"]
+    return total
 
 
 def _quality(status: str, missing: list[str], warnings: list[str]) -> dict:
@@ -86,7 +114,7 @@ def compute_overview(base: dict) -> dict:
                "duration_seconds": hour.get("duration_seconds") or (finish - begin).total_seconds(),
                "raw_observations": raw, "production": None, "composition": None,
                "capacity": None, "efficiency": None, "cycle": None}
-        estimated = live is not None and elapsed > 0 and _live_inputs(live, hour, raw, elapsed)
+        estimated = _live_inputs(live, hour, raw) if live is not None and elapsed > 0 else None
         if elapsed <= 0 or (live and not estimated):
             row["quality"] = _quality("insufficient_data", [] if elapsed <= 0 else LIVE_MISSING, [])
             complete = complete and elapsed <= 0 and not live
@@ -94,22 +122,26 @@ def compute_overview(base: dict) -> dict:
             continue
         if estimated:
             inputs = estimated
-            good_count, scrap_count, basis = inputs.good_count, inputs.scrap_count, "estimated"
+            good_count, scrap_count, basis = (sum(i.good_count for i in inputs), sum(i.scrap_count for i in inputs), "estimated")
             warnings = ["OK pieces estimated by interpolating carton declarations"]
+            if len(inputs) > 1:
+                warnings.append("Order changeover: computed per order and summed")
         else:
-            inputs = SegmentInput(elapsed, hour["good_count"], hour["scrap_count"], hour["downtime_seconds"],
+            inputs = [SegmentInput(elapsed, hour["good_count"], hour["scrap_count"], hour["downtime_seconds"],
                                   hour["microstop_seconds"], hour.get("ideal_cycle_seconds"),
-                                  hour.get("pieces_per_cycle"), hour.get("excluded_break_seconds") or 0)
+                                  hour.get("pieces_per_cycle"), hour.get("excluded_break_seconds") or 0)]
             good_count, scrap_count, basis = hour["good_count"], hour["scrap_count"], "recorded"
             warnings = list(hour.get("warnings") or [])
-        result = calculate_segment(inputs)
+        results = [calculate_segment(i) for i in inputs]
+        result = results[0] if len(results) == 1 else (aggregate(results) if all(r.status != "insufficient_data" for r in results)
+                                                        else SegmentResult(**{**vars(results[0]), "status": "insufficient_data"}))
         row["production"] = {"good_count": good_count, "scrap_count": scrap_count, "count_basis": basis}
         if result.status == "insufficient_data":
             row["quality"] = _quality(result.status, ["Ideal cycle and pieces per cycle"], warnings)
             complete = False
         else:
             row.update(_metrics(result, efficiency_kind))
-            row["composition"] = _composition(inputs, result)
+            row["composition"] = _sum_compositions([_composition(i, r) for i, r in zip(inputs, results)])
             row["quality"] = _quality("provisional" if estimated and result.status == "verified" else result.status,
                                       [], warnings)
             segments.append(result)

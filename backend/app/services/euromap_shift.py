@@ -8,7 +8,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.cache import SnapshotCache
-from app.services.hourly_good import estimate_good, order_remaining, planned_cycle_for, shift_orders, shift_totals
+from app.services.hourly_good import add_order_bounds, estimate_good, order_remaining, planned_cycle_for, shift_orders, shift_totals
 from app.services.shifts import hourly_intervals, selected_shift, utc_seconds
 
 log = logging.getLogger("dashboard.euromap_shift")
@@ -140,14 +140,23 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
             planned_cycles = planned["orders"]
         except (httpx.HTTPError, ValueError):
             log.exception("Euromap63 planned cycles unavailable machine=%s", code)
-        progress = None
+        # Progress (launch time, planned quantity, final counts) of every order seen in the shift
+        wanted = []
         if isinstance(current_status, dict) and current_status.get("order_ref"):
+            wanted.append(current_status["order_ref"])
+        for source in ((cavities or {}).get("good_declarations") or {}).get("declarations", []), planned_cycles or []:
+            for item in source:
+                ref = item.get("order_ref") if isinstance(item, dict) else None
+                if ref and ref not in wanted:
+                    wanted.append(ref)
+        progress = {}
+        for ref in wanted[:5]:
             try:
-                response = client.get("/api/orders/progress", params={"order_ref": current_status["order_ref"]})
+                response = client.get("/api/orders/progress", params={"order_ref": ref})
                 response.raise_for_status()
-                progress = response.json()
+                progress[ref] = response.json()
             except (httpx.HTTPError, ValueError):
-                log.exception("Euromap63 order progress unavailable machine=%s", code)
+                log.exception("Euromap63 order progress unavailable machine=%s order=%s", code, ref)
         return code, downtime, cycles, derived, current_status, scrap, cavities, planned_cycles, progress
 
 
@@ -274,13 +283,18 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
 
     planned_cycles = extra[0] if extra else None
     order_progress = extra[1] if len(extra) > 1 else None
-    estimates = estimate_good(good_hours, (cavity_data or {}).get("good_declarations"))
+    current_order = (current_status or {}).get("order_ref")
+    bounded = add_order_bounds((cavity_data or {}).get("good_declarations"), order_progress, planned_cycles,
+                               current_order, end.astimezone(timezone.utc))
+    estimates = estimate_good(good_hours, bounded)
     for hour, estimate, (begin_utc, finish_utc) in zip(hours, estimates, good_hours):
         hour["good_estimate"] = estimate["good"]
         hour["good_orders"] = estimate["orders"]
         hour["good_products"] = estimate["products"]
-        hour["planned_cycle_seconds"] = (planned_cycle_for(estimate["orders"][0], begin_utc, finish_utc, planned_cycles)
-                                         if len(estimate["orders"]) == 1 else None)
+        # One entry per order that ran in the hour, each with its own planned cycle and time range
+        hour["good_parts"] = [{**part, "planned_cycle_seconds": planned_cycle_for(part["order"], begin_utc, finish_utc, planned_cycles)}
+                              for part in estimate.get("parts", [])]
+        hour["planned_cycle_seconds"] = (hour["good_parts"][0]["planned_cycle_seconds"] if len(hour["good_parts"]) == 1 else None)
     planned_cycle = (current_status or {}).get("cycle_time_planned_s")
 
     bins = []
@@ -317,7 +331,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "orders": shift_orders(planned_cycles, (cavity_data or {}).get("good_declarations"),
                                                   (current_status or {}).get("order_ref"), end.astimezone(timezone.utc),
                                                   cavity_rows or None,
-                                                  order_remaining(order_progress, (current_status or {}).get("cycle_time_planned_s"))),
+                                                  order_remaining((order_progress or {}).get(current_order), (current_status or {}).get("cycle_time_planned_s"))),
                            "cyclades_shift": shift_totals((cavity_data or {}).get("good_declarations")),
                            "pieces_per_cycle": len(cavity_rows) or None,
                            "planned_cycle_seconds": planned_cycle if isinstance(planned_cycle, (int, float))
