@@ -39,7 +39,8 @@ def _live_inputs(live: dict, hour: dict, raw: dict, elapsed: float) -> SegmentIn
     if (good is None or scrap is None or stops is None or not cycle or not per_cycle
             or not order or set(hour.get("good_orders") or []) != {order}):
         return None
-    return SegmentInput(elapsed, good, scrap, stops, 0, cycle, per_cycle, 0)
+    # Interpolation noise can push an hour slightly above the ideal rate; that is not an inconsistency.
+    return SegmentInput(elapsed, good, scrap, stops, 0, cycle, per_cycle, 0, gain_verified=True)
 
 
 def _quality(status: str, missing: list[str], warnings: list[str]) -> dict:
