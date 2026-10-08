@@ -32,7 +32,7 @@ export interface DashboardData {
     cycle_source: 'recorded' | 'counter' | null; bin_minutes: number;
     current_machine: { state?: string | null; order_ref?: string | null;
       cycle_time_real_s?: number | null; cycle_time_planned_s?: number | null;
-      stop_reason?: string | null;
+      stop_reason?: string | null; tool_ref?: string | null; tool_label?: string | null;
       worst_cavity_scrap?: { reject_pct: number; cavity_no?: number | null } | null } | null;
     hours: { start: string; end: string; elapsed_seconds: number; cycle_count: number | null;
       stop_seconds: number | null; stop_count: number | null }[];

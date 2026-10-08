@@ -140,25 +140,26 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
             <button type="button" aria-pressed={unit === 'pieces'} className={unit === 'pieces' ? 'active' : ''} disabled={!piecesAvailable} title={piecesAvailable ? 'Loss equivalents calculated from the ideal cycle' : 'Verified hourly OK-piece counts are unavailable'} onClick={() => chooseUnit('pieces')}>PIECES</button>
           </div></div></section>
     </div>
+    <h2 className="scope-heading shift">SHIFT RESULTS <span>{data.shift!.name} · {hourClock(data.shift!.start)}–{hourClock(data.shift!.end)}</span></h2>
     <section className="overview-live-kpis" aria-label="Shift potential">
       <div><span>OK PIECES</span><strong>{pcs(headline.ok)}</strong></div>
       <div title="OK + scrap + stopped time recovered at the achieved running rate. A calculated counterfactual, not a measured count."><span>WITHOUT SCRAP / STOPS</span><strong>{pcs(headline.withoutLosses)}</strong></div>
       <div><span>RECOVERABLE OUTPUT</span><strong>{headline.recoverable == null ? '—' : `+${pcs(headline.recoverable)}`}</strong></div>
       <div title="Planned production time at the ideal cycle"><span>IDEAL CAPACITY</span><strong>{pcs(headline.idealCapacity)}</strong></div>
     </section>
-    {headline.missing.length > 0 && <p className="overview-partial" role="status">Production metrics unavailable: {headline.missing.join(' · ')}. Recorded observations below are still shown.</p>}
     <section className="overview-live-kpis overview-secondary" aria-label="Recorded shift totals">
       <div><span>{data.live_shift?.cycle_source === 'counter' ? 'COUNTER INCREASE' : live ? 'RECORDED CYCLES' : 'RECORDED COUNT'}</span><strong>{hourNumber(total.count)}</strong></div>
       <div><span>OBSERVED STOPS</span><strong>{hourNumber(total.stopCount)}</strong></div>
       <div><span>OBSERVED STOP TIME</span><strong>{hourStopTime(total.stopSeconds)}</strong></div>
-      <div className="scrap-kpi"><span>DECLARED SCRAP</span><div className="scrap-kpi-value"><strong>{hourNumber(total.scrap)} pcs</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div></div>
+      <div className="scrap-kpi"><span>SHIFT SCRAP</span><div className="scrap-kpi-value"><strong>{hourNumber(total.scrap)} pcs</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div></div>
     </section>
-    {live && data.live_shift?.current_machine && <div className="overview-current-state">
+    {live && data.live_shift?.current_machine && <><h2 className="scope-heading order">CURRENT ORDER <span>{data.live_shift.current_machine.order_ref || '—'}{data.live_shift.current_machine.tool_ref ? ` · tool ${data.live_shift.current_machine.tool_ref}${data.live_shift.current_machine.tool_label ? ` · ${data.live_shift.current_machine.tool_label}` : ''}` : ''}</span></h2>
+    <div className="overview-current-state">
       <span>CURRENT MACHINE STATE · <b>{data.live_shift.current_machine.state === 'bezi' ? 'RUNNING' : data.live_shift.current_machine.state === 'stoji' ? 'STOPPED' : data.live_shift.current_machine.state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN'}</b></span>
       <span>CURRENT ORDER · <b>{data.live_shift.current_machine.order_ref || '—'}</b></span>
       <span>ACTUAL / PLANNED CYCLE · <b>{hourNumber(data.live_shift.current_machine.cycle_time_real_s ?? null)} / {hourNumber(data.live_shift.current_machine.cycle_time_planned_s ?? null)} s</b></span>
-      <span className="cavity-cell">SCRAP BY CAVITY · CURRENT ORDER{data.live_shift.cavities?.order_ref ? ` ${data.live_shift.cavities.order_ref}` : ''} · <CavityRates live={data.live_shift} /></span>
-      {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div>}
+      <span className="cavity-cell">ORDER SCRAP BY CAVITY · % · <CavityRates live={data.live_shift} /></span>
+      {data.live_shift.detail_url && <a href={data.live_shift.detail_url}>Machine detail ↗</a>}</div></>}
     <div className="overview-table-scroll" role="region" aria-label="Hourly production overview" tabIndex={0}>
       <table className="overview-table"><colgroup><col className="col-job" /><col className="col-hour" /><col className="col-bar" /><col className="col-gauge" /><col className="col-gauge" /><col className="col-type" /><col className="col-reason" /><col className="col-comment" /></colgroup>
         <thead><tr><th>ORDER</th><th>HOUR / MACHINE</th>{piecesAvailable || !live ? <><th>OUTPUT / LOSSES<small>{unit === 'minutes' ? 'MINUTES' : 'PIECES / EQ.'}</small></th><th>OUTPUT EFFICIENCY<small>OK / IDEAL CAPACITY</small></th><th>CYCLE<small>ACTUAL / IDEAL</small></th></> : <><th>RECORDED ACTIVITY</th><th>{data.live_shift?.cycle_source === 'counter' ? 'COUNT' : 'CYCLES'}</th><th>STOPS<small>OBSERVED STOP TIME</small></th></>}<th>TYPE</th><th>REASON</th><th>COMMENT</th></tr></thead>

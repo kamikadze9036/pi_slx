@@ -93,11 +93,6 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   const reasonRows = scrapByReason.map(row => ({ ...row, byLane: lanes.map(no => laneQty(no, row.reason)) }));
   const shiftScrap = scrapByCavity(live);
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
-  const sourceNote = live.stop_source === 'cycles'
-    ? 'Stop intervals inferred from gaps between recorded machine cycles. Shift boundaries may be incomplete.'
-    : live.stop_source === 'histo_events'
-      ? 'Stop intervals from sampled Cyclades status events via Euromap63. Start and end times are approximate.'
-      : 'Stop history is unavailable from Euromap63.';
 
   return <main className={`screen real-shift-screen theme-${displayTheme(data.display.theme)}`}>
     <div className="real-sticky">
@@ -113,24 +108,23 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     <ShiftNavigator displayId={data.display.id} view={view} shift={shift} navigation={data.shift_navigation!} />
     <section className="real-summary"><div className="real-title"><div><span className="eyebrow">{view === 'hourly' ? 'HOURLY RECORDS' : 'SHIFT IMPRINT'} / {data.machine.id.toUpperCase()}</span>
       <h1>{data.machine.name}</h1><p>{live.machine_code} · {shift.name} · {clock(shift.start)}–{clock(shift.end)}</p></div></div>
-    <section className="real-shift-kpis" aria-label="Recorded shift values">
+    <section className="real-shift-kpis scope-shift" aria-label="Recorded shift values"><b className="scope-tag shift">SHIFT RESULTS · {shift.name}</b>
       <div><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'}</span><strong>{number(summary.cycle_count)}</strong><small>{counter ? '15-minute sampled cycle counter' : 'Machine cycles, not good pieces'}</small></div>
       <div><span>OBSERVED STOPS</span><strong>{number(summary.observed_stop_count)}</strong><small>{live.stop_source === 'histo_events' ? 'Approximate timestamps' : 'Cycle-gap detection'}</small></div>
       <div><span>OBSERVED STOP TIME</span><strong>{minutes(summary.observed_stop_seconds)}</strong><small>Partial coverage possible</small></div>
-      <div className="scrap-kpi"><span>DECLARED SCRAP · PCS</span><div className="scrap-kpi-value"><strong>{shiftScrap ? number(shiftScrap.total) : '—'}</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div><small>Declared by the operator</small></div>
+      <div className="scrap-kpi"><span>SHIFT SCRAP · PCS</span><div className="scrap-kpi-value"><strong>{shiftScrap ? number(shiftScrap.total) : '—'}</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div><small>Declared by the operator</small></div>
     </section>
       <div className="real-head-actions">
         {canSplit && <div className="real-scrap-toggle" role="group" aria-label="Scrap display"><button type="button" aria-pressed={!splitView} onClick={() => chooseView(false)}>TOTAL</button>
           <button type="button" aria-pressed={splitView} onClick={() => chooseView(true)}>BY CAVITY</button></div>}
         {live.detail_url && <a href={live.detail_url}>EUROMAP63 MACHINE DETAIL ↗</a>}</div></section>
     </div>
-    {live.current_machine && <section className="real-current-machine" aria-label="Current machine state">
+    {live.current_machine && <section className="real-current-machine scope-order" aria-label="Current machine state"><b className="scope-tag order">CURRENT ORDER</b>
       <div><span>CURRENT MACHINE STATE</span><strong>{machineState}</strong></div>
-      <div><span>CURRENT ORDER</span><strong>{live.current_machine.order_ref || '—'}</strong></div>
+      <div><span>ORDER · TOOL</span><strong>{live.current_machine.order_ref || '—'}</strong><em className="tool-line" title={live.current_machine.tool_label || ''}>{live.current_machine.tool_ref ? `${live.current_machine.tool_ref}${live.current_machine.tool_label ? ` · ${live.current_machine.tool_label}` : ''}` : 'Tool unavailable'}</em></div>
       <div><span>ACTUAL / PLANNED CYCLE</span><strong>{seconds(live.current_machine.cycle_time_real_s)} / {seconds(live.current_machine.cycle_time_planned_s)}</strong></div>
-      <div className="cavity-cell"><span>SCRAP BY CAVITY · CURRENT ORDER{live.cavities?.order_ref ? ` ${live.cavities.order_ref}` : ''}</span><CavityRates live={live} /></div>
+      <div className="cavity-cell"><span>ORDER SCRAP BY CAVITY · % SINCE ORDER START</span><CavityRates live={live} /></div>
     </section>}
-    <div className="real-shift-note">{counter ? 'Cycle counts come from changes in a sampled machine counter; missing intervals and counter resets are excluded. ' : ''}{sourceNote} Good pieces, shift scrap and OEE are unavailable until a verified production source is connected.</div>
     {!hasObservedData && <div className="real-shift-empty">No cycle or stop records are available for this shift. No production quantity is inferred.</div>}
     {view === 'hourly' ? <section className="real-shift-panel"><div className="real-shift-section-head"><span className="eyebrow">01 / HOURLY VIEW</span><h2>Recorded activity by hour</h2></div>
       <div className="real-hour-heading"><span>HOUR</span><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'} / OBSERVED STOP TIME</span><span>{counter ? 'COUNT' : 'CYCLES'}</span><span>STOPS</span><span>STOP TIME</span><span>SCRAP</span></div>
