@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import type { DashboardData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
-import { CavityRates } from '../CavityRates';
+import { CavityRates, ScrapLanes, scrapByCavity } from '../CavityRates';
 
 const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 const number = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US').format(value);
@@ -91,6 +91,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
   let worstCavity: number | null = null, worstPct = -1;
   for (const row of cavityRows) if (row.shift_reject_pct != null && row.shift_reject_pct > worstPct) { worstCavity = row.cavity_no; worstPct = row.shift_reject_pct; }
   const reasonRows = scrapByReason.map(row => ({ ...row, byLane: lanes.map(no => laneQty(no, row.reason)) }));
+  const shiftScrap = scrapByCavity(live);
   const hasObservedData = summary.cycle_count != null || summary.observed_stop_seconds != null;
   const sourceNote = live.stop_source === 'cycles'
     ? 'Stop intervals inferred from gaps between recorded machine cycles. Shift boundaries may be incomplete.'
@@ -116,6 +117,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
       <div><span>{counter ? 'COUNTER INCREASE' : 'RECORDED CYCLES'}</span><strong>{number(summary.cycle_count)}</strong><small>{counter ? '15-minute sampled cycle counter' : 'Machine cycles, not good pieces'}</small></div>
       <div><span>OBSERVED STOPS</span><strong>{number(summary.observed_stop_count)}</strong><small>{live.stop_source === 'histo_events' ? 'Approximate timestamps' : 'Cycle-gap detection'}</small></div>
       <div><span>OBSERVED STOP TIME</span><strong>{minutes(summary.observed_stop_seconds)}</strong><small>Partial coverage possible</small></div>
+      <div className="scrap-kpi"><span>DECLARED SCRAP · PCS</span><div className="scrap-kpi-value"><strong>{shiftScrap ? number(shiftScrap.total) : '—'}</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div><small>Declared by the operator</small></div>
     </section>
       <div className="real-head-actions">
         {canSplit && <div className="real-scrap-toggle" role="group" aria-label="Scrap display"><button type="button" aria-pressed={!splitView} onClick={() => chooseView(false)}>TOTAL</button>

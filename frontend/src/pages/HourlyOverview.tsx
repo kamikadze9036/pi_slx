@@ -2,7 +2,7 @@ import { Fragment, useState, type CSSProperties } from 'react';
 import type { ImprintData } from '../types';
 import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink } from '../ShiftNavigator';
-import { CavityRates } from '../CavityRates';
+import { CavityRates, ScrapLanes, scrapByCavity } from '../CavityRates';
 import { useHourUnit, type HourUnit } from '../HourUnit';
 import { buildOverviewHours, buildOverviewTotal, compositionOrder, hourClock, hourDetailSummary, hourDuration, hourNumber, hourStopTime,
   overviewHeadline, type OverviewHour } from '../hourly-model';
@@ -120,6 +120,7 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
     ...row.details.map(detail => detail.reason), ...row.segments.map(segment => segment.label)].join(' ').toLocaleLowerCase('en-US').includes(query));
   const stopEvents = data.live_shift?.downtime_events ?? data.downtime_events ?? [];
   const stopTotalSeconds = stopEvents.reduce((sum, event) => sum + event.seconds, 0);
+  const shiftScrap = data.live_shift ? scrapByCavity(data.live_shift) : null;
   const stale = offline || data.status === 'stale';
   return <main className={`screen hourly-overview theme-${displayTheme(data.display.theme)}`}>
     <div className="overview-sticky">
@@ -150,7 +151,7 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
       <div><span>{data.live_shift?.cycle_source === 'counter' ? 'COUNTER INCREASE' : live ? 'RECORDED CYCLES' : 'RECORDED COUNT'}</span><strong>{hourNumber(total.count)}</strong></div>
       <div><span>OBSERVED STOPS</span><strong>{hourNumber(total.stopCount)}</strong></div>
       <div><span>OBSERVED STOP TIME</span><strong>{hourStopTime(total.stopSeconds)}</strong></div>
-      <div><span>DECLARED SCRAP</span><strong>{hourNumber(total.scrap)} pcs</strong></div>
+      <div className="scrap-kpi"><span>DECLARED SCRAP</span><div className="scrap-kpi-value"><strong>{hourNumber(total.scrap)} pcs</strong>{shiftScrap && <ScrapLanes lanes={shiftScrap.lanes} />}</div></div>
     </section>
     {live && data.live_shift?.current_machine && <div className="overview-current-state">
       <span>CURRENT MACHINE STATE · <b>{data.live_shift.current_machine.state === 'bezi' ? 'RUNNING' : data.live_shift.current_machine.state === 'stoji' ? 'STOPPED' : data.live_shift.current_machine.state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN'}</b></span>

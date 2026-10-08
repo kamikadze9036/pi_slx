@@ -9,7 +9,7 @@
 .real-current-machine>div{background:var(--real-panel);padding:9px 12px;min-width:0}
 .real-current-machine span{display:block;color:var(--real-muted);font-size:9px;font-weight:800;letter-spacing:.07em;margin-bottom:5px}
 .real-current-machine strong{display:block;color:var(--real-ink);font-family:'Barlow Condensed',sans-serif;font-size:21px;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.real-shift-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--real-border);border-top:3px solid #38bd90;background:var(--real-panel)}
+.real-shift-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.6fr);border:1px solid var(--real-border);border-top:3px solid #38bd90;background:var(--real-panel)}
 .real-shift-kpis>div{display:flex;flex-direction:column;gap:2px;padding:12px 18px;border-right:1px solid var(--real-border)}
 .real-shift-kpis>div:last-child{border-right:0}
 .real-shift-kpis span,.real-shift-kpis small{color:var(--real-muted);font-size:10px;font-weight:800;letter-spacing:.08em}

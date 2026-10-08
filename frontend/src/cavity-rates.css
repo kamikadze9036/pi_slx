@@ -3,3 +3,6 @@
 .cavity-rates b{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:500;line-height:1.05;color:var(--real-ink,var(--ov-ink,#edf7f5))}
 .cavity-rates>div.worst span,.cavity-rates>div.worst b{color:#ee6a63;font-weight:800}.theme-light .cavity-rates>div.worst span,.theme-light .cavity-rates>div.worst b{color:#c0392b}
 .cavity-rates-empty{display:block}.overview-current-state .cavity-cell{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.overview-current-state .cavity-rates b{font-size:16px}
+.scrap-kpi-value{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}.scrap-lanes{display:inline-flex;flex-wrap:wrap;gap:2px 12px;font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--real-muted,var(--ov-muted,#91abb3))}
+.scrap-lanes b{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:500;color:var(--real-ink,var(--ov-ink,#edf7f5))}.scrap-lanes .worst,.scrap-lanes .worst b{color:#ee6a63;font-weight:800}.theme-light .scrap-lanes .worst,.theme-light .scrap-lanes .worst b{color:#c0392b}
+.real-summary .real-shift-kpis .scrap-kpi-value{display:flex}.real-summary .real-shift-kpis .scrap-lanes b{font-size:20px}.real-summary .real-shift-kpis .scrap-lanes span{font-size:10px}
