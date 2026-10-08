@@ -6,7 +6,7 @@ increase is spread linearly over time; an hour gets the part of every segment th
 An hour is estimated only when every product with a segment in it is covered for the whole hour,
 so the running hour (after the last declaration) and order changeovers stay unavailable.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 TOLERANCE_SECONDS = 1.0
 
@@ -67,7 +67,8 @@ def add_order_bounds(good: dict | None, progress: dict | None, planned: list | N
         end = ends.get(order)
         final = next((p.get("qty_good") for p in info.get("products") or [] if p.get("product") == product), None)
         last = max(mine, key=lambda i: _time(i["time"]))
-        if (order != running_order and end and end <= window_end and isinstance(final, (int, float))
+        # A shift balance row ends with the shift unless the order itself ended earlier
+        if (order != running_order and end and end < window_end - timedelta(minutes=1) and isinstance(final, (int, float))
                 and not isinstance(final, bool) and final >= float(last.get("qty_good") or 0) and end > _time(last["time"])):
             extra.append({"time": end.isoformat(), "product": product, "order_ref": order, "qty_good": float(final)})
     # Only meant for estimate_good: extra events are added next to the baseline, declarations stay untouched

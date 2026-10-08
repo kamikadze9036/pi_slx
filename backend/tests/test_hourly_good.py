@@ -131,3 +131,12 @@ def test_order_remaining_matches_cyclades_formula_with_scrap_allowance():
     assert remaining["hours_without_allowance"] == pytest.approx(368 * 58 / 3600)
     assert order_remaining(None, 50) is None
     assert order_remaining({"products": [{"qty_planned": 100, "qty_good": 40}]}, 60)["hours"] == pytest.approx(60 * 60 / 3600)
+
+
+def test_order_end_event_is_not_added_when_the_balance_row_just_ends_with_the_shift():
+    from app.services.hourly_good import add_order_bounds
+    good = {"baseline": [], "declarations": [declaration(6, 10, 940, "A", "OLD")]}
+    progress = {"OLD": {"launched_at": utc(0).isoformat(), "products": [{"product": "A", "qty_good": 5000}]}}
+    planned = [{"order_ref": "OLD", "start": utc(0).isoformat(), "end": utc(14).isoformat()}]
+    bounded = add_order_bounds(good, progress, planned, None, utc(14))
+    assert all(e["qty_good"] != 5000 for e in bounded["baseline"])
