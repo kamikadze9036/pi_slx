@@ -26,6 +26,7 @@ def _time(value):
 # The downtimes endpoint only returns a stop whose bounding cycles both fall inside the
 # requested window, so stops crossing a shift boundary vanish unless the window is padded.
 DOWNTIME_PAD = timedelta(hours=12)
+GOOD_PAD = timedelta(hours=3)
 
 
 def _fetch(machine_id: str, start: datetime, end: datetime, include_current_status: bool):
@@ -120,7 +121,9 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
                     log.exception("Euromap63 shift cavity scrap unavailable machine=%s", code)
                 try:
                     response = client.get("/api/machines/good-declarations", params={
-                        "machine": code, "since": start.isoformat(), "until": end.isoformat()})
+                        "machine": code, "since": start.isoformat(),
+                        # Declarations after the window close the last interpolation segments of its final hours
+                        "until": min(end + GOOD_PAD, datetime.now(timezone.utc)).isoformat()})
                     response.raise_for_status()
                     declared = response.json()
                     if not isinstance(declared, dict) or not isinstance(declared.get("declarations"), list):
@@ -284,7 +287,12 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     planned_cycles = extra[0] if extra else None
     order_progress = extra[1] if len(extra) > 1 else None
     current_order = (current_status or {}).get("order_ref")
-    bounded = add_order_bounds((cavity_data or {}).get("good_declarations"), order_progress, planned_cycles,
+    good_all = (cavity_data or {}).get("good_declarations")
+    # Totals and the order list describe the shift itself, only the interpolation may look past its end
+    good_window = ({**good_all, "declarations": [item for item in good_all["declarations"]
+                                                 if _time(item.get("time")) is not None and _time(item["time"]) < observed_end]}
+                   if good_all else None)
+    bounded = add_order_bounds(good_all, order_progress, planned_cycles,
                                current_order, end.astimezone(timezone.utc))
     estimates = estimate_good(good_hours, bounded)
     for hour, estimate, (begin_utc, finish_utc) in zip(hours, estimates, good_hours):
@@ -328,11 +336,11 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "cycle_source": cycle_source,
                            "bin_minutes": 10 if cycle_source == "recorded" else 15,
                            "current_machine": current_status,
-                           "orders": shift_orders(planned_cycles, (cavity_data or {}).get("good_declarations"),
+                           "orders": shift_orders(planned_cycles, good_window,
                                                   (current_status or {}).get("order_ref"), end.astimezone(timezone.utc),
                                                   cavity_rows or None,
                                                   order_remaining((order_progress or {}).get(current_order), (current_status or {}).get("cycle_time_planned_s"))),
-                           "cyclades_shift": shift_totals((cavity_data or {}).get("good_declarations")),
+                           "cyclades_shift": shift_totals(good_window),
                            "pieces_per_cycle": len(cavity_rows) or None,
                            "planned_cycle_seconds": planned_cycle if isinstance(planned_cycle, (int, float))
                            and not isinstance(planned_cycle, bool) and planned_cycle > 0 else None,
