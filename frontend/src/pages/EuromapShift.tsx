@@ -102,9 +102,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     <div className="real-sticky">
     <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
       <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a>
-      {view === 'hourly' ? <span className="selected">HOURLY RECORDS</span>
-        : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly`)}>HOURLY RECORDS ↗</a>}
-      <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly-new`)}>NEW HOURLY OVERVIEW ↗</a>
+      <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly-new`)}>HOURLY OVERVIEW ↗</a>
       {view === 'imprint' ? <span className="selected">SHIFT IMPRINT</span>
         : <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/imprint`)}>SHIFT IMPRINT ↗</a>}</nav>
       <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'EUROMAP63 CONNECTION LOST' : 'EUROMAP63 · RECORDED DATA'}</div>

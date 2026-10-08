@@ -124,7 +124,7 @@ export function HourlyOverview({ data, offline, updatedAt, now }: {
   return <main className={`screen hourly-overview theme-${displayTheme(data.display.theme)}`}>
     <div className="overview-sticky">
       <header className="topbar"><div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br />EFFICIENCY</span></div>
-        <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/hourly`)}>HOURLY RECORDS ↗</a><span className="selected">NEW HOURLY OVERVIEW</span>
+        <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><span className="selected">HOURLY OVERVIEW</span>
           <a href={displayLink(`/display/${encodeURIComponent(data.display.id)}/imprint`)}>SHIFT IMPRINT ↗</a></nav>
         <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`} />{stale ? 'DATA CONNECTION LOST' : live ? 'EUROMAP63' : data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES'}</div>
         <div className="top-time"><span>{now.toLocaleDateString('en-US', { timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric' })}</span><strong>{hourClock(now.toISOString())}</strong></div>
