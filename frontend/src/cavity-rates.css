@@ -25,3 +25,4 @@
 .real-cav-row.total{border-top:1px solid var(--real-border);font-weight:800}.real-cav-row.total .real-cav-tag{background:transparent;color:var(--real-ink)}
 .real-scrap-matrix .total{border-top:1px solid var(--real-border);padding-top:6px;font-weight:800;color:var(--real-ink)}
 .real-scrap-lane .lane-total{font-style:normal;font-size:11px;font-weight:800;text-align:right;color:var(--real-ink)}
+.cavity-rates>div.total{padding-right:14px;margin-right:2px;border-right:1px solid var(--real-border,var(--ov-border,#29454e))}.cavity-rates>div.total span,.cavity-rates>div.total b{color:var(--real-ink,var(--ov-ink,#edf7f5))}

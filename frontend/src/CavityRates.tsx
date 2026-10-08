@@ -9,7 +9,13 @@ export function CavityRates({ live }: { live: Live }) {
   const fallback = live.current_machine?.worst_cavity_scrap;
   if (!rows.length) return <strong className="cavity-rates-empty">{fallback?.reject_pct != null
     ? `${fallback.cavity_no != null ? `K${fallback.cavity_no} ` : ''}${fallback.reject_pct.toFixed(2)}%` : '—'}</strong>;
-  return <div className="cavity-rates" role="list">{rows.map(row => {
+  const reject = rows.reduce((sum, row) => sum + (row.qty_reject ?? 0), 0);
+  const made = rows.reduce((sum, row) => sum + (row.qty_good ?? 0) + (row.qty_reject ?? 0), 0);
+  const fmt = new Intl.NumberFormat('en-US');
+  return <div className="cavity-rates" role="list">
+    {rows.length > 1 && made > 0 && <div role="listitem" className="total" title={`All cavities · ${fmt.format(reject)} scrap / ${fmt.format(made)} made`}>
+      <span>Σ</span><b>{(reject / made * 100).toFixed(2)}%</b><small>{fmt.format(reject)} pcs</small></div>}
+    {rows.map(row => {
     const worst = rows.length > 1 && row.reject_pct === worstPct;
     return <div key={row.cavity_no} role="listitem" className={worst ? 'worst' : ''}
       title={`K${row.cavity_no} · ${row.label || row.product} · ${row.qty_reject ?? '—'} scrap / ${(row.qty_good ?? 0) + (row.qty_reject ?? 0)} made${row.target_pct != null ? ` · target ${row.target_pct}%` : ''}${worst ? ' · worst cavity' : ''}`}>
