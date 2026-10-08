@@ -28,7 +28,7 @@ function ConfiguredDisplay({ displayId }: { displayId: string }) {
     fetch(`/api/displays/${encodeURIComponent(displayId)}`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : Promise.reject())
       .then(display => setType(display.dashboard_type))
-      .catch(() => setType('production-efficiency'))
+      .catch(() => setType('hourly-new'))
       .finally(() => clearTimeout(timeout));
     return () => { controller.abort(); clearTimeout(timeout); };
   }, [displayId]);

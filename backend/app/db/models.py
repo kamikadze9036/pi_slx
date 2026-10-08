@@ -30,7 +30,7 @@ class Display(Base):
     name: Mapped[str] = mapped_column(String(160))
     machine_id: Mapped[str] = mapped_column(ForeignKey("machines.id"))
     machine: Mapped[Machine] = relationship()
-    dashboard_type: Mapped[str] = mapped_column(String(64), default="production-efficiency")
+    dashboard_type: Mapped[str] = mapped_column(String(64), default="hourly-new")
     theme: Mapped[str] = mapped_column(String(16), default="dark")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

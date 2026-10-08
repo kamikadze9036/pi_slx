@@ -30,7 +30,7 @@ class DisplayIn(BaseModel):
     name: str = Field(min_length=1, max_length=160)
     machine_id: str
     active: bool = True
-    dashboard_type: Literal["production-efficiency", "shift-imprint", "hourly-new"] = "production-efficiency"
+    dashboard_type: Literal["production-efficiency", "shift-imprint", "hourly-new"] = "hourly-new"
     theme: Literal["dark", "light"] = "dark"
 
 class DisplayOut(DisplayIn):
