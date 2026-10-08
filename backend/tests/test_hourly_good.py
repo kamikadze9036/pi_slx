@@ -65,3 +65,11 @@ def test_shift_totals_use_baseline_of_the_same_order_and_expose_delta_scrap():
     totals = shift_totals(good)
     assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (50, 30, 2, 18)
     assert shift_totals({"baseline": [], "declarations": []}) is None
+
+
+def test_delta_scrap_may_decrease_when_cartons_are_declared():
+    from app.services.hourly_good import shift_totals
+    row = lambda h, made, ok, rej, delta: {**declaration(h, 0, ok), "qty_made": made, "qty_reject": rej, "qty_delta_reject": delta}
+    totals = shift_totals({"baseline": [row(5, 100, 80, 5, 15)], "declarations": [row(7, 160, 146, 6, 8)]})
+    assert (totals["made"], totals["ok"], totals["scrap"], totals["delta_scrap"]) == (60, 66, 1, -7)
+    assert totals["made"] == totals["ok"] + totals["scrap"] + totals["delta_scrap"]

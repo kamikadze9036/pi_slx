@@ -85,5 +85,6 @@ def shift_totals(good: dict | None) -> dict | None:
         for name, column in keys:
             value = float(item.get(column) or 0)
             start = float(base.get(column) or 0) if base else 0.0
-            totals[name] += value - start if value >= start else value
+            # Delta scrap is a state that shrinks when cartons are declared, not a cumulative counter
+            totals[name] += value - start if value >= start or name == "delta_scrap" else value
     return {**totals, "as_of": max(i["time"] for i in last.values()), "products": len(last)}
