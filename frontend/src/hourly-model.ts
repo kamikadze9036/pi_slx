@@ -92,7 +92,8 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
       segments = compositionSegments(metrics.composition, unit);
     } else if (live) {
       const stopped = Math.max(0, Math.min(elapsed, record?.stop_seconds ?? 0));
-      segments = [{ key: 'downtime', label: 'Observed stop', value: stopped / 60 },
+      // Minutes cannot be shown in a pieces chart: without piece metrics the hour has no pieces breakdown
+      segments = unit === 'pieces' ? [] : [{ key: 'downtime', label: 'Observed stop', value: stopped / 60 },
         { key: 'unknown', label: 'Unverified time', value: (elapsed - stopped) / 60 }];
     } else if (hour) {
       segments = lossCategories.map(category => ({ key: category.key, label: category.label,
@@ -101,7 +102,7 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
     } else {
       segments = [{ key: 'unknown', label: 'Unverified time', value: unit === 'minutes' ? elapsed / 60 : 0 }];
     }
-    if (unit === 'minutes' || live) segments.push({ key: 'future', label: 'Future time', value: (duration - elapsed) / 60 });
+    if (unit === 'minutes' || (live && metrics?.composition)) segments.push({ key: 'future', label: 'Future time', value: (duration - elapsed) / 60 });
     const scrap = live ? live.scrap_declarations == null || elapsed === 0 ? null
       : live.scrap_declarations.filter(item => inside(item.time, start, end)).reduce((sum, item) => sum + item.quantity, 0)
       : hour?.scrap_count ?? null;
