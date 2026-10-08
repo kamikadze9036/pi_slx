@@ -56,6 +56,7 @@ export interface Display { id: string; name: string; machine_id: string;
   dashboard_type: string; theme: 'dark' | 'light'; active: boolean; online: boolean; last_seen: string | null }
 export interface OverviewCapacity { ideal_capacity: number | null; without_scrap_or_stops: number | null; recoverable_output: number | null }
 export interface OverviewResult {
+  estimate?: { hours_covered: number; hours_total: number };
   raw_observations: { recorded_count: number | null; stop_count: number | null; stop_seconds: number | null; declared_scrap: number | null };
   production: { good_count: number; scrap_count: number; count_basis: string } | null;
   composition: Record<string, { seconds: number; pieces: number | null }> | null;

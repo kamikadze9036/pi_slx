@@ -8,6 +8,7 @@ import httpx
 
 from app.core.config import settings
 from app.services.cache import SnapshotCache
+from app.services.hourly_good import estimate_good
 from app.services.shifts import hourly_intervals, selected_shift, utc_seconds
 
 log = logging.getLogger("dashboard.euromap_shift")
@@ -117,6 +118,16 @@ def _fetch(machine_id: str, start: datetime, end: datetime, include_current_stat
                     cavities["shift_products"] = shift_cavities["products"]
                 except (httpx.HTTPError, ValueError):
                     log.exception("Euromap63 shift cavity scrap unavailable machine=%s", code)
+                try:
+                    response = client.get("/api/machines/good-declarations", params={
+                        "machine": code, "since": start.isoformat(), "until": end.isoformat()})
+                    response.raise_for_status()
+                    declared = response.json()
+                    if not isinstance(declared, dict) or not isinstance(declared.get("declarations"), list):
+                        raise ValueError("Invalid Euromap63 good declarations response")
+                    cavities["good_declarations"] = declared
+                except (httpx.HTTPError, ValueError):
+                    log.exception("Euromap63 good declarations unavailable machine=%s", code)
         if downtime is None and cycles is None and derived is None and current_status is None:
             raise ValueError(f"No Euromap63 shift data available for {code}")
         return code, downtime, cycles, derived, current_status, scrap, cavities
@@ -221,6 +232,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     has_stop_coverage = bool(events) or (stop_source == "cycles" and len(cycle_times) >= 2)
 
     hours = []
+    good_hours = []
     for begin, finish in hourly_intervals(start, end):
         begin_utc = begin.astimezone(timezone.utc)
         finish_utc = min(finish.astimezone(timezone.utc), observed_end)
@@ -232,12 +244,19 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                        else sum(item["count"] for item in hour_counter_intervals))
         stop_seconds = sum(utc_seconds(max(begin_utc, _time(item["start"])),
                                        min(finish_utc, _time(item["end"]))) for item in events)
+        good_hours.append((begin_utc, finish_utc))
         hours.append({"start": begin.isoformat(), "end": finish.isoformat(),
                       "elapsed_seconds": utc_seconds(begin_utc, finish_utc),
                       "cycle_count": hour_cycles if cycle_times or hour_counter_intervals else None,
                       "stop_seconds": stop_seconds if has_stop_coverage else None,
                       "stop_count": sum(_time(item["start"]) < finish_utc and _time(item["end"]) > begin_utc
                                         for item in events) if has_stop_coverage else None})
+
+    estimates = estimate_good(good_hours, (cavity_data or {}).get("good_declarations"))
+    for hour, estimate in zip(hours, estimates):
+        hour["good_estimate"] = estimate["good"]
+        hour["good_orders"] = estimate["orders"]
+    planned_cycle = (current_status or {}).get("cycle_time_planned_s")
 
     bins = []
     if cycle_times:
@@ -270,6 +289,10 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "cycle_source": cycle_source,
                            "bin_minutes": 10 if cycle_source == "recorded" else 15,
                            "current_machine": current_status,
+                           "pieces_per_cycle": len(cavity_rows) or None,
+                           "planned_cycle_seconds": planned_cycle if isinstance(planned_cycle, (int, float))
+                           and not isinstance(planned_cycle, bool) and planned_cycle > 0 else None,
+                           "current_order": (current_status or {}).get("order_ref"),
                            "hours": hours, "cycle_bins": bins,
                            "downtime_events": events,
                            "scrap_declarations": declarations,

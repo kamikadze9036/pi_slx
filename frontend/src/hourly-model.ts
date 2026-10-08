@@ -171,5 +171,6 @@ export function overviewHeadline(total: OverviewHour) {
   return { ok: m?.production?.good_count ?? null, withoutLosses: m?.capacity?.without_scrap_or_stops ?? null,
     recoverable: m?.capacity?.recoverable_output ?? null, idealCapacity: m?.capacity?.ideal_capacity ?? null,
     efficiency: m?.efficiency?.ratio ?? null, efficiencyKind: m?.efficiency?.kind ?? null,
-    cycleDelta: m?.cycle?.delta_seconds ?? null, missing: m?.quality.missing_inputs ?? [] };
+    cycleDelta: m?.cycle?.delta_seconds ?? null, missing: m?.quality.missing_inputs ?? [],
+    estimated: m?.production?.count_basis === 'estimated', coverage: m?.estimate ?? null };
 }

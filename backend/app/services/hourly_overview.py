@@ -31,6 +31,17 @@ def _composition(i: SegmentInput, r: SegmentResult) -> dict:
     return result
 
 
+def _live_inputs(live: dict, hour: dict, raw: dict, elapsed: float) -> SegmentInput | None:
+    """Segment input for a live (Euromap63) hour whose OK pieces could be estimated, else None."""
+    good, scrap, stops = hour.get("good_estimate"), raw["declared_scrap"], raw["stop_seconds"]
+    cycle, per_cycle, order = live.get("planned_cycle_seconds"), live.get("pieces_per_cycle"), live.get("current_order")
+    # The planned cycle belongs to the current order only; hours of other orders stay unavailable.
+    if (good is None or scrap is None or stops is None or not cycle or not per_cycle
+            or not order or set(hour.get("good_orders") or []) != {order}):
+        return None
+    return SegmentInput(elapsed, good, scrap, stops, 0, cycle, per_cycle, 0)
+
+
 def _quality(status: str, missing: list[str], warnings: list[str]) -> dict:
     return {"status": status, "missing_inputs": missing, "warnings": warnings}
 
@@ -71,25 +82,32 @@ def compute_overview(base: dict) -> dict:
                "duration_seconds": hour.get("duration_seconds") or (finish - begin).total_seconds(),
                "raw_observations": raw, "production": None, "composition": None,
                "capacity": None, "efficiency": None, "cycle": None}
-        if live or elapsed <= 0:
+        estimated = live is not None and elapsed > 0 and _live_inputs(live, hour, raw, elapsed)
+        if elapsed <= 0 or (live and not estimated):
             row["quality"] = _quality("insufficient_data", [] if elapsed <= 0 else LIVE_MISSING, [])
             complete = complete and elapsed <= 0 and not live
             rows.append(row)
             continue
-        inputs = SegmentInput(elapsed, hour["good_count"], hour["scrap_count"], hour["downtime_seconds"],
-                              hour["microstop_seconds"], hour.get("ideal_cycle_seconds"),
-                              hour.get("pieces_per_cycle"), hour.get("excluded_break_seconds") or 0)
+        if estimated:
+            inputs = estimated
+            good_count, scrap_count, basis = inputs.good_count, inputs.scrap_count, "estimated"
+            warnings = ["OK pieces estimated by interpolating carton declarations"]
+        else:
+            inputs = SegmentInput(elapsed, hour["good_count"], hour["scrap_count"], hour["downtime_seconds"],
+                                  hour["microstop_seconds"], hour.get("ideal_cycle_seconds"),
+                                  hour.get("pieces_per_cycle"), hour.get("excluded_break_seconds") or 0)
+            good_count, scrap_count, basis = hour["good_count"], hour["scrap_count"], "recorded"
+            warnings = list(hour.get("warnings") or [])
         result = calculate_segment(inputs)
-        row["production"] = {"good_count": hour["good_count"], "scrap_count": hour["scrap_count"],
-                             "count_basis": "recorded"}
-        warnings = list(hour.get("warnings") or [])
+        row["production"] = {"good_count": good_count, "scrap_count": scrap_count, "count_basis": basis}
         if result.status == "insufficient_data":
             row["quality"] = _quality(result.status, ["Ideal cycle and pieces per cycle"], warnings)
             complete = False
         else:
             row.update(_metrics(result, efficiency_kind))
             row["composition"] = _composition(inputs, result)
-            row["quality"] = _quality(result.status, [], warnings)
+            row["quality"] = _quality("provisional" if estimated and result.status == "verified" else result.status,
+                                      [], warnings)
             segments.append(result)
             for key, value in row["composition"].items():
                 old = composition_total.setdefault(key, {"seconds": 0.0, "pieces": 0.0 if value["pieces"] is not None else None})
@@ -99,17 +117,21 @@ def compute_overview(base: dict) -> dict:
         rows.append(row)
 
     elapsed_rows = [r for r in rows if r["elapsed_seconds"] > 0]
+    estimated_total = bool(live) and bool(segments)
     total = {"raw_observations": _total_raw(base, live), "production": None, "composition": None,
              "capacity": None, "efficiency": None, "cycle": None,
              "quality": _quality("insufficient_data", [] if not live else LIVE_MISSING, [])}
-    if elapsed_rows and complete and len(segments) == len(elapsed_rows):
+    if elapsed_rows and (complete and len(segments) == len(elapsed_rows) or estimated_total):
         combined = aggregate(segments)
         total.update(_metrics(combined, efficiency_kind))
         total["production"] = {"good_count": combined.good_count, "scrap_count": combined.scrap_count,
-                               "count_basis": "recorded"}
+                               "count_basis": "estimated" if estimated_total else "recorded"}
         total["composition"] = composition_total
-        total["quality"] = _quality(combined.status, [],
-                                    sorted({w for r in rows for w in r["quality"]["warnings"]}))
+        warnings = sorted({w for r in rows for w in r["quality"]["warnings"]})
+        if estimated_total:
+            total["estimate"] = {"hours_covered": len(segments), "hours_total": len(elapsed_rows)}
+        total["quality"] = _quality("provisional" if estimated_total and combined.status == "verified" else combined.status,
+                                    [], warnings)
     elif elapsed_rows and not live:
         total["quality"]["missing_inputs"] = ["Ideal cycle and pieces per cycle for every hour"]
     return {**base, "overview": {"hours": rows, "total": total}}

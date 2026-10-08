@@ -12,3 +12,4 @@
 .scope-heading{display:flex;align-items:baseline;gap:10px;margin:14px 0 6px;font-size:10px;letter-spacing:.12em;font-weight:800;color:var(--ov-ink)}.scope-heading span{font-weight:500;letter-spacing:.03em;color:var(--ov-muted)}
 .scope-heading::before{content:'';width:10px;height:10px;border-radius:2px;align-self:center}.scope-heading.shift::before{background:#38bd90}.scope-heading.order::before{background:#5aa9e6}
 .hourly-overview .overview-current-state{border-top:2px solid #5aa9e6}.hourly-overview .overview-live-kpis{border-top-color:#38bd90}
+.overview-live-kpis small{display:block;margin-top:2px;font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--ov-muted)}
