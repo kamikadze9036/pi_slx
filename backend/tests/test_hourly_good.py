@@ -110,3 +110,14 @@ def test_shift_orders_lists_finished_before_running_with_cavity_scrap():
     assert first["ended_at"] == utc(9).isoformat() and first["tool"] == "MO1"
     assert [(c["cavity_no"], c["product"]) for c in first["cavities"]] == [(1, "B1"), (2, "B2")]
     assert first["cavities"][1]["reject_pct"] == pytest.approx(5.0)   # last declaration 190 good / 10 scrap
+
+
+def test_order_remaining_uses_the_product_with_most_missing_pieces():
+    from app.services.hourly_good import order_remaining
+    progress = {"products": [{"qty_planned": 920, "qty_good": 118}, {"qty_planned": 920, "qty_good": 106}],
+                "planned_duration_raw": 51903.0, "worked_fab_raw": 6668.0, "worked_stops_raw": 1.0}
+    remaining = order_remaining(progress, 53.73)
+    assert remaining["pieces_left"] == 814
+    assert remaining["hours"] == pytest.approx(814 * 53.73 / 3600)
+    assert remaining["hours_by_plan"] == pytest.approx((51903 - 6667) / 3600)
+    assert order_remaining(None, 50) is None

@@ -3,10 +3,10 @@ import { CavityRates } from './CavityRates';
 
 type Live = NonNullable<DashboardData['live_shift']>;
 const clock = (value: string) => new Date(value).toLocaleTimeString('en-GB', { timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit' });
-const stateText = (state?: string | null) => state === 'bezi' ? 'RUNNING' : state === 'stoji' ? 'STOPPED' : state === 'bez_zakazky' ? 'NO ORDER' : 'UNKNOWN';
 const seconds = (value?: number | null) => value == null ? '—' : `${value.toFixed(1)} s`;
+const hours = (value?: number | null) => value == null ? '—' : value < 1 ? `${Math.round(value * 60)} min` : `${value.toFixed(1)} h`;
 
-// One row per order that ran in the shown shift, oldest first; machine state only for the order running now.
+// One row per order that ran in the shown shift, oldest first; expected time to end only for the order running now.
 export function OrdersStrip({ live }: { live: Live }) {
   const orders = live.orders ?? [];
   const machine = live.current_machine;
@@ -17,7 +17,9 @@ export function OrdersStrip({ live }: { live: Live }) {
       <small title={order.tool_label || ''}>{order.tool ? `${order.tool}${order.tool_label ? ` · ${order.tool_label}` : ''}` : 'Tool unavailable'}</small></div>
     <div className="order-cell"><span>{order.status === 'running' ? 'ACTUAL / PLANNED CYCLE' : 'PLANNED CYCLE'}</span>
       <strong>{order.status === 'running' && machine ? `${seconds(machine.cycle_time_real_s)} / ${seconds(machine.cycle_time_planned_s ?? order.planned_cycle_s)}` : seconds(order.planned_cycle_s)}</strong></div>
-    {order.status === 'running' && machine && <div className="order-cell"><span>MACHINE STATE</span><strong>{stateText(machine.state)}</strong></div>}
+    {order.status === 'running' && <div className="order-cell" title={order.remaining ? `By quantity at the planned cycle: ${hours(order.remaining.hours)} · by planned order duration minus time worked: ${hours(order.remaining.hours_by_plan)}` : undefined}>
+      <span>EXPECTED TIME TO END</span><strong>{order.remaining?.hours != null ? `~${hours(order.remaining.hours)}` : '—'}</strong>
+      {order.remaining?.pieces_left != null && <small>{new Intl.NumberFormat('en-US').format(order.remaining.pieces_left)} pcs left</small>}</div>}
     <div className="order-cell cavity-cell"><span>ORDER SCRAP BY CAVITY · % SINCE ORDER START</span><CavityRates rows={order.cavities} /></div>
   </div>)}</div>;
 }

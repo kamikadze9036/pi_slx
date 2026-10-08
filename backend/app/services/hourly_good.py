@@ -107,8 +107,31 @@ def planned_cycle_for(order: str, begin: datetime, finish: datetime, rows: list 
     return max(overlapping or candidates, key=lambda c: c[0])[2]
 
 
+def order_remaining(progress: dict | None, cycle_s: float | None) -> dict | None:
+    """Expected time to finish a running order.
+
+    Main figure: the product with the most pieces still missing (planned minus good) times the planned
+    cycle, since all cavities run in the same cycles. Cross-check: planned order duration
+    (OF_DUREOFPREV, seconds, includes the scrap allowance) minus the net time already worked.
+    """
+    if not isinstance(progress, dict):
+        return None
+    left = []
+    for product in progress.get("products") or []:
+        planned, good = product.get("qty_planned"), product.get("qty_good")
+        if isinstance(planned, (int, float)) and isinstance(good, (int, float)) and planned > 0:
+            left.append(max(0.0, planned - good))
+    hours = max(left) * cycle_s / 3600 if left and cycle_s and cycle_s > 0 else None
+    duration, worked, stops = progress.get("planned_duration_raw"), progress.get("worked_fab_raw"), progress.get("worked_stops_raw")
+    by_plan = (max(0.0, duration - (worked - (stops or 0))) / 3600
+               if all(isinstance(v, (int, float)) for v in (duration, worked)) and duration > 0 else None)
+    if hours is None and by_plan is None:
+        return None
+    return {"hours": hours, "hours_by_plan": by_plan, "pieces_left": max(left) if left else None}
+
+
 def shift_orders(planned: list | None, good: dict | None, current_order: str | None, shift_end: datetime,
-                 current_cavities: list | None = None) -> list[dict]:
+                 current_cavities: list | None = None, remaining: dict | None = None) -> list[dict]:
     """Orders that ran in the shift, oldest first, each with scrap per cavity since the order start.
 
     Per-product counters of BILAN_SAISIE_EQUIPE are cumulative per order, so the last declaration of a
@@ -152,6 +175,7 @@ def shift_orders(planned: list | None, good: dict | None, current_order: str | N
         orders.append({"order_ref": order, "status": "running" if running else "finished",
                        "tool": info.get(order, {}).get("tool"), "tool_label": info.get(order, {}).get("tool_label"),
                        "planned_cycle_s": info.get(order, {}).get("planned_cycle_s"),
+                       "remaining": remaining if running else None,
                        "ended_at": end.isoformat() if end and not running and end < shift_end else None,
                        "cavities": rows})
     return orders

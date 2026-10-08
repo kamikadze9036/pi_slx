@@ -57,7 +57,6 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
     }
     return { no, bins };
   });
-  const maxLaneBin = Math.max(1, ...laneData.flatMap(lane => [...lane.bins.values()]));
   const laneQty = (no: number | null, reason?: string) => (scrapList || [])
     .filter(item => (item.cavity_no ?? null) === no && (reason === undefined || item.reason === reason))
     .reduce((sum, item) => sum + item.quantity, 0);
@@ -159,7 +158,7 @@ export function EuromapShift({ data, view, offline, updatedAt, now }: {
         <div className="real-scrap-lanes">{laneData.map(lane => <div key={lane.no ?? 'unknown'} className="real-scrap-lane">
           <span className={`real-cav-tag ${lane.no === worstCavity ? 'worst' : ''}`}>{laneName(lane.no)}</span><em className="lane-total">{number(laneQty(lane.no))}</em>
           <div className="real-timeline-scrap lane" aria-label={`Declared scrap, cavity ${laneName(lane.no)}`}>{[...lane.bins].map(([slot, quantity]) => <i key={slot}
-            style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(14, quantity / maxLaneBin * 100)}%` }}
+            style={{ left: `${slot * scrapSlotWidth}%`, width: `${scrapSlotWidth}%`, height: `${Math.max(8, quantity / maxScrapBin * 100)}%` }}
             title={scrapTitle(slot, lane.no)} />)}</div></div>)}</div></>}
       <p className="real-shift-help">Unmarked time is not confirmed running. Bars show {counter ? 'counter changes' : 'cycles'}, not good pieces.{scrapList ? ' Scrap bars show pieces declared by the operator in that interval, not when the scrap was produced.' : ''}</p>
     </section>}
