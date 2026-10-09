@@ -1,4 +1,4 @@
-// UI language: English (default) or Czech. The choice is kept in localStorage and can be forced with ?lang=cs|en.
+// UI language: Czech (default) or English. The choice is kept in localStorage and can be forced with ?lang=cs|en.
 // Texts are keyed by their English wording; a missing translation falls back to English.
 export type Lang = 'en' | 'cs';
 
@@ -9,7 +9,7 @@ function readLang(): Lang {
     const stored = window.localStorage.getItem('lang');
     if (stored === 'cs' || stored === 'en') return stored;
   } catch { /* Browsing still works without storage. */ }
-  return forced === 'cs' ? 'cs' : 'en';
+  return 'cs';
 }
 
 export const lang: Lang = readLang();
