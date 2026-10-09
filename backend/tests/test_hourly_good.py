@@ -121,6 +121,22 @@ def test_shift_orders_lists_finished_before_running_with_cavity_scrap():
     assert first["cavities"][1]["reject_pct"] == pytest.approx(5.0)   # last declaration 190 good / 10 scrap
 
 
+def test_shift_orders_uses_progress_metadata_of_a_finished_order():
+    from app.services.hourly_good import shift_orders
+    decl = lambda product, good, rej: {"time": utc(8).isoformat(), "product": product, "order_ref": "OF1",
+                                       "qty_good": good, "qty_reject": rej, "qty_made": good + rej, "qty_delta_reject": 0}
+    good = {"baseline": [], "declarations": [decl("B1", 95, 5), decl("B2", 190, 10)]}
+    planned = [{"order_ref": "OF1", "tool": "MO1", "tool_label": "Panel", "planned_cycle_s": 50.0,
+                "start": utc(5).isoformat(), "end": utc(13).isoformat()}]
+    progress = {"OF1": {"ended_at": utc(9).isoformat(), "products": [
+        {"product": "B2", "cavity_no": 3, "label": "Right", "target_pct": 5.0},
+        {"product": "B1", "cavity_no": 4, "label": "Left", "target_pct": 5.0}]}}
+    first = shift_orders(planned, good, "OF2", utc(14), None, None, progress)[0]
+    assert first["ended_at"] == utc(9).isoformat()
+    assert [(c["cavity_no"], c["label"], c["target_pct"]) for c in first["cavities"]] == [(4, "Left", 5.0), (3, "Right", 5.0)]
+    assert first["cavities"][1]["reject_pct"] == pytest.approx(5.0)
+
+
 def test_order_remaining_matches_cyclades_formula_with_scrap_allowance():
     from app.services.hourly_good import order_remaining
     progress = {"products": [{"qty_planned": 912, "qty_good": 544}, {"qty_planned": 912, "qty_good": 544}],

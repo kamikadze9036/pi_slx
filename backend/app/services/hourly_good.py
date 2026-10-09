@@ -189,13 +189,18 @@ def order_remaining(progress: dict | None, cycle_s: float | None) -> dict | None
 
 
 def shift_orders(planned: list | None, good: dict | None, current_order: str | None, shift_end: datetime,
-                 current_cavities: list | None = None, remaining: dict | None = None) -> list[dict]:
+                 current_cavities: list | None = None, remaining: dict | None = None,
+                 progress: dict | None = None) -> list[dict]:
     """Orders that ran in the shift, oldest first, each with scrap per cavity since the order start.
 
     Per-product counters of BILAN_SAISIE_EQUIPE are cumulative per order, so the last declaration of a
     product inside the shift is its order total up to the end of the shift. Cyclades gives the cavity
     number only for the running order; for finished orders it is the rank of the product reference,
     which matches the Cyclades numbering on every press checked.
+
+    A finished order leaves the live Cyclades tables, so `progress` (live or archive LIGOF rows,
+    filled by the Euromap63 API) still provides the cavity number, product label, target scrap and
+    end time; the counts stay those of the last declaration inside the shift.
     """
     last: dict[tuple[str, str], dict] = {}
     first_seen: dict[str, datetime] = {}
@@ -221,15 +226,20 @@ def shift_orders(planned: list | None, good: dict | None, current_order: str | N
                      "reject_pct": c.get("reject_pct"), "target_pct": c.get("target_pct")} for c in current_cavities]
         else:
             rows = []
+            known = {p.get("product"): p for p in (progress or {}).get(order, {}).get("products") or []}
             for number, product in enumerate(products, start=1):
                 item = last[(order, product)]
                 good_qty, reject = float(item.get("qty_good") or 0), float(item.get("qty_reject") or 0)
-                rows.append({"cavity_no": number, "product": product, "label": None, "qty_good": good_qty,
-                             "qty_reject": reject, "target_pct": None,
+                meta = known.get(product) or {}
+                rows.append({"cavity_no": meta.get("cavity_no") or number, "product": product, "label": meta.get("label"),
+                             "qty_good": good_qty, "qty_reject": reject, "target_pct": meta.get("target_pct"),
                              "reject_pct": reject / (good_qty + reject) * 100 if good_qty + reject > 0 else None})
         if not running and not rows and not info.get(order, {}).get("tool"):
             continue  # shift balance rows without declarations or tool are not real production
         end = info.get(order, {}).get("end")
+        finished_at = _time((progress or {}).get(order, {}).get("ended_at"))
+        if finished_at and not running:
+            end = finished_at
         orders.append({"order_ref": order, "status": "running" if running else "finished",
                        "tool": info.get(order, {}).get("tool"), "tool_label": info.get(order, {}).get("tool_label"),
                        "planned_cycle_s": info.get(order, {}).get("planned_cycle_s"),
