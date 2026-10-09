@@ -57,6 +57,34 @@ def test_real_shift_counts_cycles_and_clips_stops_without_inventing_pieces(monke
     assert by_cavity[1]["shift_reject_pct"] is None
 
 
+def test_earlier_shift_shows_cavities_of_its_own_order_from_archive(monkeypatch):
+    monkeypatch.setattr(euromap_shift, "cache", SnapshotCache(15))
+    monkeypatch.setattr(euromap_shift, "_fetch", lambda machine, start, end, current: (
+        "KM-MC5-01",
+        {"source": "cycles", "segments": []},
+        [{"time": "2026-09-24T06:10:00+02:00"}], None, {"order_ref": "OF-2"},
+        {"declarations": [
+            {"time": "2026-09-24T06:30:00+02:00", "quantity": 2.0, "reason": "Burn", "product": "FG1", "order_ref": "OF-1"}]},
+        {"order_ref": "OF-2", "cavities": [
+            {"cavity_no": 1, "product": "NEW", "label": "N", "qty_good": 5.0, "qty_reject": 0.0,
+             "reject_pct": 0.0, "target_pct": 5.0}],
+         "shift_products": [
+             {"product": "FG1", "order_ref": "OF-1", "qty_made": 40.0, "qty_good": 36.0, "qty_reject": 4.0, "reject_pct": 10.0},
+             {"product": "FG2", "order_ref": "OF-1", "qty_made": 40.0, "qty_good": 39.0, "qty_reject": 1.0, "reject_pct": 2.5}]},
+        [],
+        {"OF-1": {"source": "archive", "products": [
+            {"product": "FG1", "cavity_no": 1, "label": "LH", "qty_good": 90.0, "qty_reject": 10.0, "target_pct": 5.0},
+            {"product": "FG2", "cavity_no": 2, "label": "RH", "qty_good": 99.0, "qty_reject": 1.0, "target_pct": 5.0}]}}))
+    now = datetime(2026, 9, 25, 10, tzinfo=PRAGUE).astimezone(timezone.utc)
+    live = euromap_shift.build_euromap_shift(
+        DISPLAY, MACHINE, [SHIFT], now, {"refresh_seconds": 10},
+        datetime(2026, 9, 24, 6, tzinfo=PRAGUE))["live_shift"]
+    assert live["cavities"]["order_ref"] == "OF-1"
+    assert [row["product"] for row in live["cavities"]["rows"]] == ["FG1", "FG2"]
+    assert live["scrap_declarations"][0]["cavity_no"] == 1
+    assert live["cavities"]["rows"][0]["shift_reject_pct"] == 10.0
+
+
 def test_empty_recording_is_unavailable_not_zero(monkeypatch):
     monkeypatch.setattr(euromap_shift, "cache", SnapshotCache(15))
     monkeypatch.setattr(euromap_shift, "_fetch", lambda machine, start, end, current: (

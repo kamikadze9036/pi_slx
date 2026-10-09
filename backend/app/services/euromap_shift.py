@@ -209,7 +209,26 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
         reject = sum(row.get("qty_reject") or 0 for row in shift_products.values())
         if made > 0:
             shift_total = {"made": made, "reject": reject, "reject_pct": round(reject / made * 100, 2)}
-        for row in cavity_data["cavities"]:
+        cavity_source = cavity_data["cavities"]
+        # The machine's current order is not the order of an earlier shift: show the cavities of the order
+        # that produced most in this shift, taken from its (live or archived) LIGOF rows.
+        made_by_order: dict = {}
+        for row in shift_products.values():
+            made_by_order[row.get("order_ref")] = made_by_order.get(row.get("order_ref"), 0) + (row.get("qty_made") or 0)
+        shift_order = max(made_by_order, key=made_by_order.get) if made_by_order else None
+        progress_by_order = extra[1] if len(extra) > 1 and isinstance(extra[1], dict) else {}
+        archived = (progress_by_order.get(shift_order) or {}).get("products") if shift_order else None
+        if shift_order and shift_order != cavity_order and not made_by_order.get(cavity_order) and archived:
+            cavity_order = shift_order
+            cavity_source = []
+            for item in archived:
+                good_qty, reject = item.get("qty_good"), item.get("qty_reject")
+                total = (good_qty or 0) + (reject or 0)
+                cavity_source.append({"cavity_no": item.get("cavity_no"), "product": item.get("product"),
+                                      "label": item.get("label"), "qty_good": good_qty, "qty_reject": reject,
+                                      "reject_pct": round((reject or 0) / total * 100, 2) if total > 0 else None,
+                                      "target_pct": item.get("target_pct")})
+        for row in cavity_source:
             number = row.get("cavity_no") if isinstance(row, dict) else None
             if isinstance(number, bool) or not isinstance(number, int) or not row.get("product"):
                 continue
@@ -338,7 +357,7 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
                            "current_machine": current_status,
                            "orders": shift_orders(planned_cycles, good_window,
                                                   (current_status or {}).get("order_ref"), end.astimezone(timezone.utc),
-                                                  cavity_rows or None,
+                                                  (cavity_rows if cavity_order == (current_status or {}).get("order_ref") else None) or None,
                                                   order_remaining((order_progress or {}).get(current_order), (current_status or {}).get("cycle_time_planned_s")),
                                                   order_progress),
                            "cyclades_shift": shift_totals(good_window),
