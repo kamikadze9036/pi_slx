@@ -1,21 +1,22 @@
 import type { Hour, ImprintData, OverviewResult } from './types';
 import type { HourUnit } from './HourUnit';
+import { t, locale, numberLocale } from './i18n';
 
-export const hourClock = (value: string) => new Date(value).toLocaleTimeString('en-GB', {
+export const hourClock = (value: string) => new Date(value).toLocaleTimeString(locale, {
   timeZone: 'Europe/Prague', hour: '2-digit', minute: '2-digit'
 });
-export const hourNumber = (value: number | null) => value == null ? '—' : new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 }).format(value);
+export const hourNumber = (value: number | null) => value == null ? '—' : new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 1 }).format(value);
 export const hourDuration = (seconds: number) => seconds < 60 ? `${hourNumber(Math.round(seconds))} s` : `${hourNumber(seconds / 60)} min`;
 export const hourStopTime = (seconds: number | null) => seconds == null ? '—' : `${Math.round(seconds / 60)} min`;
 
 export const lossCategories = [
-  { key: 'good', seconds: 'good_seconds', label: 'Good production' },
-  { key: 'speed_loss', seconds: 'speed_loss_seconds', label: 'Slow running' },
-  { key: 'microstop', seconds: 'microstop_seconds', label: 'Micro stops' },
-  { key: 'downtime', seconds: 'downtime_seconds', label: 'Observed stop' },
-  { key: 'break', seconds: 'excluded_break_seconds', label: 'Break' },
-  { key: 'scrap', seconds: 'scrap_loss_seconds', label: 'Scrap' },
-  { key: 'unknown', seconds: 'unknown_seconds', label: 'Unverified time' },
+  { key: 'good', seconds: 'good_seconds', label: t('Good production') },
+  { key: 'speed_loss', seconds: 'speed_loss_seconds', label: t('Slow running') },
+  { key: 'microstop', seconds: 'microstop_seconds', label: t('Micro stops') },
+  { key: 'downtime', seconds: 'downtime_seconds', label: t('Observed stop') },
+  { key: 'break', seconds: 'excluded_break_seconds', label: t('Break') },
+  { key: 'scrap', seconds: 'scrap_loss_seconds', label: t('Scrap') },
+  { key: 'unknown', seconds: 'unknown_seconds', label: t('Unverified time') },
 ] as const;
 export interface HourSegment { key: string; label: string; value: number }
 export interface HourDetail {
@@ -24,9 +25,9 @@ export interface HourDetail {
   quantity?: number;
 }
 export const compositionOrder = [
-  { key: 'good', label: 'OK pieces' }, { key: 'scrap', label: 'Declared scrap' },
-  { key: 'downtime', label: 'Stop' }, { key: 'microstop', label: 'Micro stops' },
-  { key: 'speed_loss', label: 'Slow running' }, { key: 'break', label: 'Excluded break' },
+  { key: 'good', label: t('OK pieces') }, { key: 'scrap', label: t('Declared scrap') },
+  { key: 'downtime', label: t('Stop') }, { key: 'microstop', label: t('Micro stops') },
+  { key: 'speed_loss', label: t('Slow running') }, { key: 'break', label: t('Excluded break') },
 ] as const;
 export interface OverviewHour {
   metrics?: OverviewResult | null;
@@ -57,16 +58,16 @@ function recordedDetails(data: ImprintData, start: string, end: string): HourDet
     const seconds = overlap(event.start, event.end, start, end);
     if (!seconds) return [];
     return [{ key: 'category' in event && event.category === 'micro_stop' ? 'microstop' : 'downtime',
-      label: 'category' in event && event.category === 'micro_stop' ? 'Micro stop' : 'Observed stop',
+      label: 'category' in event && event.category === 'micro_stop' ? t('Micro stop') : t('Observed stop'),
       amount: hourDuration(seconds), reason: event.reason, comment: event.comment ?? undefined,
       start: new Date(Math.max(Date.parse(start), Date.parse(event.start))).toISOString(),
       end: new Date(Math.min(Date.parse(end), Date.parse(event.end))).toISOString() }];
   });
   const scrap: HourDetail[] = live ? (live.scrap_declarations ?? []).filter(item => inside(item.time, start, end)).map(item => ({
-    key: 'scrap', label: 'Declared scrap', amount: `${hourNumber(item.quantity)} pcs`, reason: item.reason,
+    key: 'scrap', label: t('Declared scrap'), amount: `${hourNumber(item.quantity)} ${t('pcs')}`, reason: item.reason,
     start: item.time, cavity: item.cavity_no, quantity: item.quantity, comment: item.comment ?? undefined,
   })) : (data.scrap_reports ?? []).filter(item => inside(item.at, start, end)).map(item => ({
-    key: 'scrap', label: 'Declared scrap', amount: `${hourNumber(item.count)} pcs`, reason: item.reason, start: item.at, quantity: item.count, comment: item.comment ?? undefined,
+    key: 'scrap', label: t('Declared scrap'), amount: `${hourNumber(item.count)} ${t('pcs')}`, reason: item.reason, start: item.at, quantity: item.count, comment: item.comment ?? undefined,
   }));
   return [...stops, ...scrap].sort((a, b) => Date.parse(a.start!) - Date.parse(b.start!));
 }
@@ -93,16 +94,16 @@ export function buildOverviewHours(data: ImprintData, unit: HourUnit): OverviewH
     } else if (live) {
       const stopped = Math.max(0, Math.min(elapsed, record?.stop_seconds ?? 0));
       // Minutes cannot be shown in a pieces chart: without piece metrics the hour has no pieces breakdown
-      segments = unit === 'pieces' ? [] : [{ key: 'downtime', label: 'Observed stop', value: stopped / 60 },
-        { key: 'unknown', label: 'Unverified time', value: (elapsed - stopped) / 60 }];
+      segments = unit === 'pieces' ? [] : [{ key: 'downtime', label: t('Observed stop'), value: stopped / 60 },
+        { key: 'unknown', label: t('Unverified time'), value: (elapsed - stopped) / 60 }];
     } else if (hour) {
       segments = lossCategories.map(category => ({ key: category.key, label: category.label,
         value: unit === 'minutes' ? Number(hour[category.seconds as keyof Hour]) / 60
           : hour.piece_equivalents?.[category.key] ?? 0 }));
     } else {
-      segments = [{ key: 'unknown', label: 'Unverified time', value: unit === 'minutes' ? elapsed / 60 : 0 }];
+      segments = [{ key: 'unknown', label: t('Unverified time'), value: unit === 'minutes' ? elapsed / 60 : 0 }];
     }
-    if (unit === 'minutes' || (live && metrics?.composition)) segments.push({ key: 'future', label: 'Future time', value: (duration - elapsed) / 60 });
+    if (unit === 'minutes' || (live && metrics?.composition)) segments.push({ key: 'future', label: t('Future time'), value: (duration - elapsed) / 60 });
     const scrap = live ? live.scrap_declarations == null || elapsed === 0 ? null
       : live.scrap_declarations.filter(item => inside(item.time, start, end)).reduce((sum, item) => sum + item.quantity, 0)
       : hour?.scrap_count ?? null;
@@ -147,8 +148,8 @@ export function buildOverviewTotal(data: ImprintData, rows: OverviewHour[], unit
 export function hourDetailSummary(row: OverviewHour, live: boolean, unit: HourUnit): HourDetail[] {
   const details: HourDetail[] = row.segments.filter(segment => segment.key !== 'future' && (!live || segment.key !== 'unknown')).map(segment => ({
     key: segment.key, label: segment.label,
-    amount: unit === 'minutes' || live ? hourDuration(segment.value * 60) : `${hourNumber(segment.value)} ${['good', 'scrap'].includes(segment.key) ? 'pcs' : 'pcs eq.'}`,
-    reason: segment.key === 'unknown' ? 'Machine state is unverified in this interval' : '—',
+    amount: unit === 'minutes' || live ? hourDuration(segment.value * 60) : `${hourNumber(segment.value)} ${['good', 'scrap'].includes(segment.key) ? t('pcs') : t('pcs eq.')}`,
+    reason: segment.key === 'unknown' ? t('Machine state is unverified in this interval') : '—',
   }));
   // Keep verified event reasons together without duplicating category totals.
   const grouped = new Map<string, HourDetail>();
@@ -158,11 +159,11 @@ export function hourDetailSummary(row: OverviewHour, live: boolean, unit: HourUn
   }
   for (const item of grouped.values()) {
     const same = row.details.filter(detail => detail.key === item.key && detail.reason === item.reason && detail.comment === item.comment);
-    if (item.key === 'scrap') item.amount = `${hourNumber(same.reduce((sum, detail) => sum + (detail.quantity ?? 0), 0))} pcs`;
+    if (item.key === 'scrap') item.amount = `${hourNumber(same.reduce((sum, detail) => sum + (detail.quantity ?? 0), 0))} ${t('pcs')}`;
     else item.amount = hourDuration(same.reduce((sum, detail) => sum + (Date.parse(detail.end!) - Date.parse(detail.start!)) / 1000, 0));
   }
   const knownKeys = new Set([...grouped.values()].map(detail => detail.key));
-  return [...(live ? [{ key: 'good', label: 'Recorded count', amount: hourNumber(row.count), reason: '—' }] : []),
+  return [...(live ? [{ key: 'good', label: t('Recorded count'), amount: hourNumber(row.count), reason: '—' }] : []),
     ...details.filter(detail => !knownKeys.has(detail.key) || detail.key === 'scrap'), ...grouped.values()];
 }
 

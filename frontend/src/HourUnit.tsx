@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { t } from './i18n';
 
 export type HourUnit = 'minutes' | 'pieces';
 export function useHourUnit(storageKey = 'imprint-hour-unit'): [HourUnit, (unit: HourUnit) => void] {
@@ -14,10 +15,10 @@ export function useHourUnit(storageKey = 'imprint-hour-unit'): [HourUnit, (unit:
 }
 
 export function HourUnitToggle({ unit, onChange }: { unit: HourUnit; onChange: (unit: HourUnit) => void }) {
-  return <div className="hour-unit-toggle" role="group" aria-label="Hourly breakdown unit">
+  return <div className="hour-unit-toggle" role="group" aria-label={t('Hourly breakdown unit')}>
     <button type="button" className={unit === 'minutes' ? 'active' : ''}
-      aria-pressed={unit === 'minutes'} onClick={() => onChange('minutes')}>MINUTES</button>
+      aria-pressed={unit === 'minutes'} onClick={() => onChange('minutes')}>{t('MINUTES')}</button>
     <button type="button" className={unit === 'pieces' ? 'active' : ''}
-      aria-pressed={unit === 'pieces'} onClick={() => onChange('pieces')}>PIECES</button>
+      aria-pressed={unit === 'pieces'} onClick={() => onChange('pieces')}>{t('PIECES')}</button>
   </div>;
 }

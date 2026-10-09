@@ -3,6 +3,7 @@ import type { ImprintData } from '../types';
 import { displayTheme } from '../theme';
 import { shiftApiQuery, useShiftStart } from '../ShiftNavigator';
 import { HourlyOverview } from './HourlyOverview';
+import { t } from '../i18n';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 
@@ -45,7 +46,7 @@ export function DashboardNew({ displayId }: { displayId: string }) {
     return () => { mounted = false; activeController?.abort(); clearTimeout(timer); clearInterval(clockTimer); clearInterval(beatTimer); };
   }, [displayId, shiftStart]);
 
-  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading hourly overview…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
-  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
+  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">{t('PRODUCTION EFFICIENCY')}</div><h1>{offline ? t('DATA CONNECTION LOST') : t('Loading hourly overview…')}</h1><p>{offline ? t('Reconnecting automatically') : t('Display {id}', { id: displayId })}</p></main>;
+  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>{t('Outside scheduled shift')}</h1><p>{t('Waiting for the next configured shift')}</p></main>;
   return <HourlyOverview data={data} offline={offline} updatedAt={updatedAt} now={now} />;
 }

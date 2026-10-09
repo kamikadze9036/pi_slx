@@ -16,6 +16,7 @@ import './shift-navigation.css';
 import './euromap-shift.css';
 import './hourly-overview.css';
 import './cavity-rates.css';
+import { t } from './i18n';
 
 const path = window.location.pathname;
 const match = path.match(/^\/display\/([^/]+)(?:\/(imprint|hourly-new|hourly))?/);
@@ -32,7 +33,7 @@ function ConfiguredDisplay({ displayId }: { displayId: string }) {
       .finally(() => clearTimeout(timeout));
     return () => { controller.abort(); clearTimeout(timeout); };
   }, [displayId]);
-  if (type === null) return <main className="empty-state"><span className="eyebrow">PRODUCTION EFFICIENCY</span><h1>Loading display…</h1></main>;
+  if (type === null) return <main className="empty-state"><span className="eyebrow">{t('PRODUCTION EFFICIENCY')}</span><h1>{t('Loading display…')}</h1></main>;
   return type === 'shift-imprint' ? <ShiftImprint displayId={displayId} /> : type === 'hourly-new' ? <DashboardNew displayId={displayId} /> : <Dashboard displayId={displayId} />;
 }
 

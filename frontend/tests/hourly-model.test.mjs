@@ -7,7 +7,9 @@ import ts from 'typescript';
 const module = { exports: {} };
 const source = readFileSync(new URL('../src/hourly-model.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
-new Function('module', 'exports', compiled.outputText)(module, module.exports);
+// i18n touches window/localStorage; the model only needs English text and locales here.
+const i18n = { t: (text, vars = {}) => Object.entries(vars).reduce((out, [key, value]) => out.split(`{${key}}`).join(value), text), locale: 'en-GB', numberLocale: 'en-US' };
+new Function('module', 'exports', 'require', compiled.outputText)(module, module.exports, () => i18n);
 const { buildOverviewHours, buildOverviewTotal, hourDetailSummary, overviewHeadline } = module.exports;
 
 function recordedData() {

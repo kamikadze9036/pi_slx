@@ -4,23 +4,24 @@ import { displayTheme, themeQuery } from '../theme';
 import { ShiftNavigator, displayLink, shiftApiQuery, useShiftStart } from '../ShiftNavigator';
 import { HourUnitToggle, useHourUnit, type HourUnit } from '../HourUnit';
 import { EuromapShift } from './EuromapShift';
+import { t, LangSwitch, locale, numberLocale } from '../i18n';
 
 const VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
-const number = (value: number) => new Intl.NumberFormat('en-US').format(value);
+const number = (value: number) => new Intl.NumberFormat(numberLocale).format(value);
 const pct = (value: number | null | undefined) => value == null ? '—' : `${Math.round(value * 100)}%`;
 const pct2 = (value: number | null | undefined) => value == null ? '—' : `${(value * 100).toFixed(2)}%`;
 const mins = (value: number) => `${Math.round(value / 60)}m`;
-const clock = (value: string) => new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+const clock = (value: string) => new Date(value).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
 
 const categories: { key: keyof Hour; pieces: keyof NonNullable<Hour['piece_equivalents']>;
   label: string; className: string }[] = [
-  { key: 'good_seconds', pieces: 'good', label: 'Good production', className: 'good' },
-  { key: 'speed_loss_seconds', pieces: 'speed_loss', label: 'Slow running', className: 'speed' },
-  { key: 'microstop_seconds', pieces: 'microstop', label: 'Micro stops', className: 'micro' },
-  { key: 'downtime_seconds', pieces: 'downtime', label: 'Downtime', className: 'down' },
-  { key: 'excluded_break_seconds', pieces: 'break', label: 'Break', className: 'break' },
-  { key: 'scrap_loss_seconds', pieces: 'scrap', label: 'Scrap', className: 'scrap' },
-  { key: 'unknown_seconds', pieces: 'unknown', label: 'Unknown', className: 'unknown' },
+  { key: 'good_seconds', pieces: 'good', label: t('Good production'), className: 'good' },
+  { key: 'speed_loss_seconds', pieces: 'speed_loss', label: t('Slow running'), className: 'speed' },
+  { key: 'microstop_seconds', pieces: 'microstop', label: t('Micro stops'), className: 'micro' },
+  { key: 'downtime_seconds', pieces: 'downtime', label: t('Downtime'), className: 'down' },
+  { key: 'excluded_break_seconds', pieces: 'break', label: t('Break'), className: 'break' },
+  { key: 'scrap_loss_seconds', pieces: 'scrap', label: t('Scrap'), className: 'scrap' },
+  { key: 'unknown_seconds', pieces: 'unknown', label: t('Unknown'), className: 'unknown' },
 ];
 
 function HourRow({ hour, unit }: { hour: Hour; unit: HourUnit }) {
@@ -32,14 +33,14 @@ function HourRow({ hour, unit }: { hour: Hour; unit: HourUnit }) {
   return <div className={`hour-row ${hour.current ? 'is-current' : ''}`}>
     <div className="hour-time"><strong>{clock(hour.start)}</strong><span>{clock(hour.end)}</span></div>
     <div className="bar-wrap">
-      <div className="bar" aria-label={`${clock(hour.start)} to ${clock(hour.end)} ${unit} production breakdown`}>
-        {unit === 'pieces' && !equivalents ? <span className="hour-piece-unavailable">Ideal cycle unavailable</span>
+      <div className="bar" aria-label={`${clock(hour.start)}–${clock(hour.end)} ${t(unit)}`}>
+        {unit === 'pieces' && !equivalents ? <span className="hour-piece-unavailable">{t('Ideal cycle unavailable')}</span>
           : categories.map(({ key, pieces, label, className }, index) => {
           const value = values[index];
           if (value <= 0) return null;
           const width = value / total * 100;
-          const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} pcs`;
-          const qualifier = unit === 'pieces' && pieces !== 'good' && pieces !== 'scrap' ? ' equivalent' : '';
+          const amount = unit === 'minutes' ? `${value.toFixed(1)} min` : `${Math.round(value)} ${t('pcs')}`;
+          const qualifier = unit === 'pieces' && pieces !== 'good' && pieces !== 'scrap' ? ` ${t('equivalent')}` : '';
           const barLabel = unit === 'minutes' ? `${value.toFixed(1)}m` : number(Math.round(value));
           return <div key={key} className={`bar-segment ${className}`} style={{ width: `${width}%` }}
             title={`${label}: ${amount}${qualifier}`} aria-label={`${label}: ${amount}${qualifier}`}>
@@ -47,13 +48,13 @@ function HourRow({ hour, unit }: { hour: Hour; unit: HourUnit }) {
           </div>;
         })}
       </div>
-      {hour.current && unit === 'minutes' && <span className="now-mark">NOW</span>}
+      {hour.current && unit === 'minutes' && <span className="now-mark">{t('NOW')}</span>}
     </div>
     <div className="hour-metric"><span>OEE</span><strong>{pct(hour.oee)}</strong></div>
-    <div className="hour-metric detail-metric"><span>PERF</span><strong>{pct(hour.performance)}</strong></div>
-    <div className="hour-metric detail-metric"><span>GOOD / TGT</span><strong>{number(hour.good_count)}<em>/{hour.target_good == null ? '—' : number(hour.target_good)}</em></strong></div>
-    <div className="hour-metric detail-metric"><span>SCRAP</span><strong>{number(hour.scrap_count)}</strong></div>
-    <div className="hour-metric detail-metric"><span>{unit === 'minutes' ? 'STOP' : 'STOP EQ'}</span><strong>{unit === 'minutes' ? mins(hour.downtime_seconds) : equivalents ? number(Math.round(equivalents.downtime)) : '—'}</strong></div>
+    <div className="hour-metric detail-metric"><span>{t('PERF')}</span><strong>{pct(hour.performance)}</strong></div>
+    <div className="hour-metric detail-metric"><span>{t('GOOD / TGT')}</span><strong>{number(hour.good_count)}<em>/{hour.target_good == null ? '—' : number(hour.target_good)}</em></strong></div>
+    <div className="hour-metric detail-metric"><span>{t('SCRAP')}</span><strong>{number(hour.scrap_count)}</strong></div>
+    <div className="hour-metric detail-metric"><span>{unit === 'minutes' ? t('STOP') : t('STOP EQ')}</span><strong>{unit === 'minutes' ? mins(hour.downtime_seconds) : equivalents ? number(Math.round(equivalents.downtime)) : '—'}</strong></div>
   </div>;
 }
 
@@ -102,8 +103,8 @@ export function Dashboard({ displayId }: { displayId: string }) {
   }, [displayId, shiftStart]);
 
   const stale = offline || data?.status === 'stale';
-  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">PRODUCTION EFFICIENCY</div><h1>{offline ? 'DATA CONNECTION LOST' : 'Loading display…'}</h1><p>{offline ? 'Reconnecting automatically' : `Display ${displayId}`}</p></main>;
-  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>Outside scheduled shift</h1><p>Waiting for the next configured shift</p></main>;
+  if (!data) return <main className={`empty-state theme-${displayTheme()}`}><div className="eyebrow">{t('PRODUCTION EFFICIENCY')}</div><h1>{offline ? t('DATA CONNECTION LOST') : t('Loading display…')}</h1><p>{offline ? t('Reconnecting automatically') : t('Display {id}', { id: displayId })}</p></main>;
+  if (data.status === 'outside_shift') return <main className={`empty-state theme-${displayTheme(data.display.theme)}`}><div className="eyebrow">{data.machine.name}</div><h1>{t('Outside scheduled shift')}</h1><p>{t('Waiting for the next configured shift')}</p></main>;
   if (data.data_source === 'euromap63') return <EuromapShift data={data} view="hourly" offline={offline} updatedAt={updatedAt} now={now} />;
   const production = data.production!;
   const summary = data.summary!;
@@ -113,38 +114,38 @@ export function Dashboard({ displayId }: { displayId: string }) {
   return <main className={`screen theme-${displayTheme(data.display.theme)}`}>
     <header className="topbar">
       <div className="brand"><span className="brand-mark">P·E</span><span>PRODUCTION<br/>EFFICIENCY</span></div>
-      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? 'DATA CONNECTION LOST' : `${data.shift_navigation?.is_current ? 'CURRENT SHIFT' : 'HISTORICAL SHIFT'} · ${data.data_source === 'mock' ? 'SIMULATED DATA' : 'CICLADES DATA'}`}</div>
-      <div className="top-time"><span>{now.toLocaleDateString([], { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</strong></div>
+      <div className="top-status"><span className={`status-dot ${stale ? 'stale' : ''}`}></span>{stale ? t('DATA CONNECTION LOST') : `${data.shift_navigation?.is_current ? t('CURRENT SHIFT') : t('HISTORICAL SHIFT')} · ${data.data_source === 'mock' ? t('SIMULATED DATA') : t('CICLADES DATA')}`}</div>
+      <div className="top-time"><span>{now.toLocaleDateString(locale, { weekday: 'short', day: '2-digit', month: 'short' }).toUpperCase()}</span><strong>{now.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false })}</strong><LangSwitch /></div>
     </header>
-    <nav className="view-nav" aria-label="Display views"><a href={`/fleet${themeQuery}`}>PLANT OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly-new`)}>HOURLY OVERVIEW ↗</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/imprint`)}>SHIFT IMPRINT ↗</a></nav>
-    {stale && <div className="stale-banner">Showing last available data · Last successful update {updatedAt?.toLocaleTimeString() || 'unknown'} · Retrying</div>}
+    <nav className="view-nav" aria-label={t('Display views')}><a href={`/fleet${themeQuery}`}>{t('PLANT OVERVIEW ↗')}</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/hourly-new`)}>{t('HOURLY OVERVIEW ↗')}</a><a href={displayLink(`/display/${encodeURIComponent(displayId)}/imprint`)}>{t('SHIFT IMPRINT ↗')}</a></nav>
+    {stale && <div className="stale-banner">{t('Showing last available data · Last successful update {time} · Retrying', { time: updatedAt?.toLocaleTimeString(locale) || t('unknown') })}</div>}
     <ShiftNavigator displayId={displayId} view="hourly" shift={data.shift!} navigation={data.shift_navigation!} />
     <section className="headline">
-      <div className="line-title"><div className="eyebrow">PRODUCTION LINE <span className="slash">/</span> {data.display.id.toUpperCase()}</div>
-        <h1>{data.machine.name}</h1><div className="product-line">{production.product || 'Product unavailable'} <span>·</span> {production.order || 'Order unavailable'}</div></div>
-      <div className="headline-meta"><div><span>SELECTED SHIFT</span><strong>{data.shift!.name}</strong><small>{clock(data.shift!.start)} — {clock(data.shift!.end)}</small></div>
-        <div><span>SHIFT TARGET</span><strong>{production.target == null ? '—' : number(production.target)}</strong><small>GOOD PIECES</small></div>
-        <div><span>ACTUAL / Δ</span><strong>{number(production.actual_good)}</strong><small className={(production.delta || 0) < 0 ? 'negative' : 'positive'}>{production.delta == null ? '—' : `${production.delta > 0 ? '+' : ''}${number(production.delta)} VS TARGET`}</small></div></div>
+      <div className="line-title"><div className="eyebrow">{t('PRODUCTION LINE')} <span className="slash">/</span> {data.display.id.toUpperCase()}</div>
+        <h1>{data.machine.name}</h1><div className="product-line">{production.product || t('Product unavailable')} <span>·</span> {production.order || t('Order unavailable')}</div></div>
+      <div className="headline-meta"><div><span>{t('SELECTED SHIFT')}</span><strong>{data.shift!.name}</strong><small>{clock(data.shift!.start)} — {clock(data.shift!.end)}</small></div>
+        <div><span>{t('SHIFT TARGET')}</span><strong>{production.target == null ? '—' : number(production.target)}</strong><small>{t('GOOD PIECES')}</small></div>
+        <div><span>{t('ACTUAL / Δ')}</span><strong>{number(production.actual_good)}</strong><small className={(production.delta || 0) < 0 ? 'negative' : 'positive'}>{production.delta == null ? '—' : t('{n} VS TARGET', { n: `${production.delta > 0 ? '+' : ''}${number(production.delta)}` })}</small></div></div>
     </section>
     <section className="chart-panel">
-      <div className="section-head"><div><span className="eyebrow">01 / SHIFT BREAKDOWN</span><h2>{hourUnit === 'minutes' ? 'Where the time went' : 'Where the output went'}</h2></div>
-        <div className="hourly-head-actions"><span className="section-aside">{hourUnit === 'minutes' ? 'HOURLY LOSS COMPOSITION · ELAPSED TIME ONLY' : 'GOOD / SCRAP ACTUAL · LOSSES ESTIMATED'}</span><HourUnitToggle unit={hourUnit} onChange={chooseHourUnit} /></div></div>
-      <div className="bar-heading"><span>HOUR</span><span>{hourUnit === 'minutes' ? 'TIME COMPOSITION · 60 MIN CAPACITY' : 'PIECE COMPOSITION · IDEAL CYCLE'}</span><span>OEE</span><span>PERF</span><span>GOOD / TGT</span><span>SCRAP</span><span>{hourUnit === 'minutes' ? 'STOP' : 'STOP EQ'}</span></div>
+      <div className="section-head"><div><span className="eyebrow">{t('01 / SHIFT BREAKDOWN')}</span><h2>{hourUnit === 'minutes' ? t('Where the time went') : t('Where the output went')}</h2></div>
+        <div className="hourly-head-actions"><span className="section-aside">{hourUnit === 'minutes' ? t('HOURLY LOSS COMPOSITION · ELAPSED TIME ONLY') : t('GOOD / SCRAP ACTUAL · LOSSES ESTIMATED')}</span><HourUnitToggle unit={hourUnit} onChange={chooseHourUnit} /></div></div>
+      <div className="bar-heading"><span>{t('HOUR')}</span><span>{hourUnit === 'minutes' ? t('TIME COMPOSITION · 60 MIN CAPACITY') : t('PIECE COMPOSITION · IDEAL CYCLE')}</span><span>OEE</span><span>{t('PERF')}</span><span>{t('GOOD / TGT')}</span><span>{t('SCRAP')}</span><span>{hourUnit === 'minutes' ? t('STOP') : t('STOP EQ')}</span></div>
       <div className="hours">{data.hours!.map(hour => <HourRow key={hour.start} hour={hour} unit={hourUnit} />)}</div>
-      <div className="legend">{categories.map(item => <span key={item.key}><i className={item.className}></i>{item.label}</span>)}{hourUnit === 'minutes' && <span><i className="future"></i>Future</span>}</div>
-      {hourUnit === 'pieces' && <p className="hour-piece-note">Good and scrap are actual pieces. Other categories are estimated piece equivalents from the ideal cycle. Breaks appear when configured in the source data.</p>}
+      <div className="legend">{categories.map(item => <span key={item.key}><i className={item.className}></i>{item.label}</span>)}{hourUnit === 'minutes' && <span><i className="future"></i>{t('Future')}</span>}</div>
+      {hourUnit === 'pieces' && <p className="hour-piece-note">{t('Good and scrap are actual pieces. Other categories are estimated piece equivalents from the ideal cycle. Breaks appear when configured in the source data.')}</p>}
     </section>
-    <section className="summary-panel"><div className="summary-title"><span className="eyebrow">02 / SHIFT PERFORMANCE</span><h2>At a glance</h2></div>
+    <section className="summary-panel"><div className="summary-title"><span className="eyebrow">{t('02 / SHIFT PERFORMANCE')}</span><h2>{t('At a glance')}</h2></div>
       <div className="kpis">
-        {show('oee') && <Kpi label="OVERALL OEE" value={pct(summary.oee)} note={data.shift_navigation?.is_current ? 'SHIFT TO DATE' : 'FULL SHIFT'} accent={oeeWarning ? 'primary warning' : 'primary'} />}
-        {show('availability') && <Kpi label="AVAILABILITY" value={pct(summary.availability)} />}
-        {show('performance') && <Kpi label="PERFORMANCE" value={pct(summary.performance)} />}
-        {show('quality') && <Kpi label="QUALITY" value={pct(summary.quality)} />}
-        {show('good') && <Kpi label="GOOD PIECES" value={number(summary.good_count)} accent="green-text" />}
-        {show('scrap') && <Kpi label="SCRAP" value={number(summary.scrap_count)} note={`${pct2(summary.scrap_percent)} OF TOTAL`} accent="red-text" />}
-        {show('downtime') && <Kpi label="DOWNTIME" value={mins(summary.downtime_seconds)} accent="orange-text" />}
-        {show('speed_loss') && <Kpi label="SPEED LOSS" value={mins(summary.speed_loss_seconds)} accent="yellow-text" />}
+        {show('oee') && <Kpi label={t('OVERALL OEE')} value={pct(summary.oee)} note={data.shift_navigation?.is_current ? t('SHIFT TO DATE') : t('FULL SHIFT')} accent={oeeWarning ? 'primary warning' : 'primary'} />}
+        {show('availability') && <Kpi label={t('AVAILABILITY')} value={pct(summary.availability)} />}
+        {show('performance') && <Kpi label={t('PERFORMANCE')} value={pct(summary.performance)} />}
+        {show('quality') && <Kpi label={t('QUALITY')} value={pct(summary.quality)} />}
+        {show('good') && <Kpi label={t('GOOD PIECES')} value={number(summary.good_count)} accent="green-text" />}
+        {show('scrap') && <Kpi label={t('SCRAP')} value={number(summary.scrap_count)} note={t('{pct} OF TOTAL', { pct: pct2(summary.scrap_percent) })} accent="red-text" />}
+        {show('downtime') && <Kpi label={t('DOWNTIME')} value={mins(summary.downtime_seconds)} accent="orange-text" />}
+        {show('speed_loss') && <Kpi label={t('SPEED LOSS')} value={mins(summary.speed_loss_seconds)} accent="yellow-text" />}
       </div></section>
-    <footer><span>{data.display.name.toUpperCase()} <span className="footer-sep">/</span> {data.shift!.name.toUpperCase()} SHIFT</span><span>{summary.warnings.length > 0 ? `DATA QUALITY · ${summary.warnings.join(', ')}` : 'DATA QUALITY · OK'}</span><span>UPDATED {updatedAt?.toLocaleTimeString() || '—'}</span></footer>
+    <footer><span>{data.display.name.toUpperCase()} <span className="footer-sep">/</span> {t('{name} SHIFT', { name: data.shift!.name.toUpperCase() })}</span><span>{summary.warnings.length > 0 ? t('DATA QUALITY · {text}', { text: summary.warnings.join(', ') }) : t('DATA QUALITY · OK')}</span><span>{t('UPDATED {time}', { time: updatedAt?.toLocaleTimeString(locale) || '—' })}</span></footer>
   </main>;
 }
