@@ -1,6 +1,9 @@
 """Read shift observations through Euromap63; never infer good pieces from cycles."""
 
 import logging
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 
@@ -29,138 +32,133 @@ DOWNTIME_PAD = timedelta(hours=12)
 GOOD_PAD = timedelta(hours=3)
 
 
+_client_lock = threading.Lock()
+_clients: dict[str, httpx.Client] = {}
+_catalog: dict[str, tuple[float, list]] = {}
+CATALOG_TTL = 300
+FINISHED_TTL = 6 * 3600
+SETTLING_TTL = 60
+_pool = ThreadPoolExecutor(max_workers=16, thread_name_prefix="euromap")
+
+
+def _shared_client(base: str) -> httpx.Client:
+    # One pooled client keeps connections alive between shift switches
+    with _client_lock:
+        client = _clients.get(base)
+        if client is None:
+            client = _clients[base] = httpx.Client(base_url=base, timeout=15)
+        return client
+
+
+def _machine_catalog(client: httpx.Client, base: str) -> list:
+    with _client_lock:
+        cached = _catalog.get(base)
+        if cached and time.monotonic() - cached[0] < CATALOG_TTL:
+            return cached[1]
+    response = client.get("/api/machines")
+    response.raise_for_status()
+    catalog = response.json()
+    if not isinstance(catalog, list):
+        raise ValueError("Invalid Euromap63 machine catalog")
+    with _client_lock:
+        _catalog[base] = (time.monotonic(), catalog)
+    return catalog
+
+
+def _json(client: httpx.Client, path: str, params: dict, check, label: str, code: str):
+    """GET + validate; None (logged) when the endpoint is unavailable or malformed."""
+    try:
+        response = client.get(path, params=params)
+        response.raise_for_status()
+        value = response.json()
+        if not check(value):
+            raise ValueError(f"Invalid Euromap63 {label} response")
+        return value
+    except (httpx.HTTPError, ValueError):
+        log.exception("Euromap63 %s unavailable machine=%s", label, code)
+        return None
+
+
+def _is_dict_with(key: str):
+    return lambda value: isinstance(value, dict) and isinstance(value.get(key), list)
+
+
 def _fetch(machine_id: str, start: datetime, end: datetime, include_current_status: bool):
     base = settings.euromap63_api_url.rstrip("/")
     if not base:
         raise ValueError("EUROMAP63_API_URL is required")
-    with httpx.Client(base_url=base, timeout=15) as client:
-        catalog_response = client.get("/api/machines")
-        catalog_response.raise_for_status()
-        catalog = catalog_response.json()
-        if not isinstance(catalog, list):
-            raise ValueError("Invalid Euromap63 machine catalog")
-        machine = next((row for row in catalog if isinstance(row, dict)
-                        and (row.get("cyclades_mac_refmac") or row.get("machine_code")) == machine_id), None)
-        if machine is None or not machine.get("machine_code"):
-            raise ValueError(f"Machine {machine_id} is not in Euromap63")
-        code = str(machine["machine_code"])
-        params = {"machine": code, "since": start.isoformat(), "until": end.isoformat()}
-        downtime = cycles = derived = current_status = scrap = cavities = None
-        try:
-            response = client.get("/api/downtimes", params={
-                **params, "since": (start - DOWNTIME_PAD).isoformat(),
-                "until": min(end + DOWNTIME_PAD, datetime.now(timezone.utc)).isoformat()})
-            response.raise_for_status()
-            downtime = response.json()
-            if not isinstance(downtime, dict) or not isinstance(downtime.get("segments"), list):
-                raise ValueError("Invalid Euromap63 downtime response")
-        except (httpx.HTTPError, ValueError):
-            log.exception("Euromap63 downtimes unavailable machine=%s", code)
-            downtime = None
-        try:
-            response = client.get("/api/cycles", params=params)
-            response.raise_for_status()
-            cycles = response.json()
-            if not isinstance(cycles, list):
-                raise ValueError("Invalid Euromap63 cycles response")
-            if len(cycles) >= 20000:
-                raise ValueError("Euromap63 cycle response reached its row limit")
-        except (httpx.HTTPError, ValueError):
-            log.exception("Euromap63 cycles unavailable machine=%s", code)
-            cycles = None
-        if not cycles:
-            try:
-                response = client.get("/api/cycles/cyclades-derived", params=params)
-                response.raise_for_status()
-                derived = response.json()
-                if not isinstance(derived, list):
-                    raise ValueError("Invalid Euromap63 counter response")
-            except (httpx.HTTPError, ValueError):
-                log.exception("Euromap63 counter history unavailable machine=%s", code)
-                derived = None
-        if include_current_status:
-            try:
-                response = client.get("/api/machines/status")
-                response.raise_for_status()
-                rows = response.json()
-                if not isinstance(rows, list):
-                    raise ValueError("Invalid Euromap63 status response")
-                current_status = next((row for row in rows if isinstance(row, dict)
-                                       and row.get("machine_code") == code), None)
-            except (httpx.HTTPError, ValueError):
-                log.exception("Euromap63 current status unavailable machine=%s", code)
-        try:
-            response = client.get("/api/scrap-declarations", params=params)
-            response.raise_for_status()
-            scrap = response.json()
-            if not isinstance(scrap, dict) or not isinstance(scrap.get("declarations"), list):
-                raise ValueError("Invalid Euromap63 scrap declarations response")
-        except (httpx.HTTPError, ValueError):
-            log.exception("Euromap63 scrap declarations unavailable machine=%s", code)
-            scrap = None
-        if scrap is not None:
-            try:
-                response = client.get("/api/machines/cavity-scrap", params={"machine": code})
-                response.raise_for_status()
-                cavities = response.json()
-                if not isinstance(cavities, dict) or not isinstance(cavities.get("cavities"), list):
-                    raise ValueError("Invalid Euromap63 cavity scrap response")
-            except (httpx.HTTPError, ValueError):
-                log.exception("Euromap63 cavity scrap unavailable machine=%s", code)
-                cavities = None
-            if cavities is not None:
-                try:
-                    response = client.get("/api/machines/cavity-scrap/shift", params={
-                        "machine": code, "since": start.isoformat(), "until": end.isoformat()})
-                    response.raise_for_status()
-                    shift_cavities = response.json()
-                    if not isinstance(shift_cavities, dict) or not isinstance(shift_cavities.get("products"), list):
-                        raise ValueError("Invalid Euromap63 shift cavity scrap response")
-                    cavities["shift_products"] = shift_cavities["products"]
-                except (httpx.HTTPError, ValueError):
-                    log.exception("Euromap63 shift cavity scrap unavailable machine=%s", code)
-                try:
-                    response = client.get("/api/machines/good-declarations", params={
-                        "machine": code, "since": start.isoformat(),
-                        # Declarations after the window close the last interpolation segments of its final hours
-                        "until": min(end + GOOD_PAD, datetime.now(timezone.utc)).isoformat()})
-                    response.raise_for_status()
-                    declared = response.json()
-                    if not isinstance(declared, dict) or not isinstance(declared.get("declarations"), list):
-                        raise ValueError("Invalid Euromap63 good declarations response")
-                    cavities["good_declarations"] = declared
-                except (httpx.HTTPError, ValueError):
-                    log.exception("Euromap63 good declarations unavailable machine=%s", code)
-        if downtime is None and cycles is None and derived is None and current_status is None:
-            raise ValueError(f"No Euromap63 shift data available for {code}")
-        planned_cycles = None
-        try:
-            response = client.get("/api/machines/planned-cycles", params=params)
-            response.raise_for_status()
-            planned = response.json()
-            if not isinstance(planned, dict) or not isinstance(planned.get("orders"), list):
-                raise ValueError("Invalid Euromap63 planned cycles response")
-            planned_cycles = planned["orders"]
-        except (httpx.HTTPError, ValueError):
-            log.exception("Euromap63 planned cycles unavailable machine=%s", code)
-        # Progress (launch time, planned quantity, final counts) of every order seen in the shift
-        wanted = []
-        if isinstance(current_status, dict) and current_status.get("order_ref"):
-            wanted.append(current_status["order_ref"])
-        for source in ((cavities or {}).get("good_declarations") or {}).get("declarations", []), planned_cycles or []:
-            for item in source:
-                ref = item.get("order_ref") if isinstance(item, dict) else None
-                if ref and ref not in wanted:
-                    wanted.append(ref)
-        progress = {}
-        for ref in wanted[:5]:
-            try:
-                response = client.get("/api/orders/progress", params={"order_ref": ref})
-                response.raise_for_status()
-                progress[ref] = response.json()
-            except (httpx.HTTPError, ValueError):
-                log.exception("Euromap63 order progress unavailable machine=%s order=%s", code, ref)
-        return code, downtime, cycles, derived, current_status, scrap, cavities, planned_cycles, progress
+    client = _shared_client(base)
+    catalog = _machine_catalog(client, base)
+    machine = next((row for row in catalog if isinstance(row, dict)
+                    and (row.get("cyclades_mac_refmac") or row.get("machine_code")) == machine_id), None)
+    if machine is None or not machine.get("machine_code"):
+        raise ValueError(f"Machine {machine_id} is not in Euromap63")
+    code = str(machine["machine_code"])
+    params = {"machine": code, "since": start.isoformat(), "until": end.isoformat()}
+    now = datetime.now(timezone.utc)
+
+    def call(path, query, check, label):
+        return _pool.submit(_json, client, path, query, check, label, code)
+
+    # The endpoints are independent: run them concurrently instead of one after another
+    f_downtime = call("/api/downtimes", {**params, "since": (start - DOWNTIME_PAD).isoformat(),
+                                         "until": min(end + DOWNTIME_PAD, now).isoformat()},
+                      _is_dict_with("segments"), "downtimes")
+    f_cycles = call("/api/cycles", params, lambda v: isinstance(v, list), "cycles")
+    f_status = (call("/api/machines/status", {}, lambda v: isinstance(v, list), "current status")
+                if include_current_status else None)
+    f_scrap = call("/api/scrap-declarations", params, _is_dict_with("declarations"), "scrap declarations")
+    f_cavities = call("/api/machines/cavity-scrap", {"machine": code}, _is_dict_with("cavities"), "cavity scrap")
+    f_shift_cavities = call("/api/machines/cavity-scrap/shift", params, _is_dict_with("products"),
+                            "shift cavity scrap")
+    f_good = call("/api/machines/good-declarations",
+                  # Declarations after the window close the last interpolation segments of its final hours
+                  {"machine": code, "since": start.isoformat(), "until": min(end + GOOD_PAD, now).isoformat()},
+                  _is_dict_with("declarations"), "good declarations")
+    f_planned = call("/api/machines/planned-cycles", params, _is_dict_with("orders"), "planned cycles")
+
+    downtime = f_downtime.result()
+    cycles = f_cycles.result()
+    if isinstance(cycles, list) and len(cycles) >= 20000:
+        log.error("Euromap63 cycle response reached its row limit machine=%s", code)
+        cycles = None
+    derived = None
+    f_derived = (call("/api/cycles/cyclades-derived", params, lambda v: isinstance(v, list), "counter history")
+                 if not cycles else None)
+    current_status = None
+    if f_status is not None:
+        rows = f_status.result()
+        current_status = next((row for row in rows or [] if isinstance(row, dict)
+                               and row.get("machine_code") == code), None)
+    scrap = f_scrap.result()
+    cavities = f_cavities.result() if scrap is not None else None
+    if cavities is not None:
+        shift_cavities = f_shift_cavities.result()
+        if shift_cavities is not None:
+            cavities["shift_products"] = shift_cavities["products"]
+        declared = f_good.result()
+        if declared is not None:
+            cavities["good_declarations"] = declared
+    if f_derived is not None:
+        derived = f_derived.result()
+    if downtime is None and cycles is None and derived is None and current_status is None:
+        raise ValueError(f"No Euromap63 shift data available for {code}")
+    planned = f_planned.result()
+    planned_cycles = planned["orders"] if planned is not None else None
+    # Progress (launch time, planned quantity, final counts) of every order seen in the shift
+    wanted = []
+    if isinstance(current_status, dict) and current_status.get("order_ref"):
+        wanted.append(current_status["order_ref"])
+    for source in ((cavities or {}).get("good_declarations") or {}).get("declarations", []), planned_cycles or []:
+        for item in source:
+            ref = item.get("order_ref") if isinstance(item, dict) else None
+            if ref and ref not in wanted:
+                wanted.append(ref)
+    futures = {ref: call("/api/orders/progress", {"order_ref": ref}, lambda v: True, f"order progress {ref}")
+               for ref in wanted[:5]}
+    progress = {ref: future.result() for ref, future in futures.items()}
+    progress = {ref: value for ref, value in progress.items() if value is not None}
+    return code, downtime, cycles, derived, current_status, scrap, cavities, planned_cycles, progress
 
 
 def build_euromap_shift(display, machine, shifts, now: datetime,
@@ -178,8 +176,12 @@ def build_euromap_shift(display, machine, shifts, now: datetime,
     key = (machine.mes_id, start.isoformat(), observed_end.isoformat() if not current else "current")
     # Past shifts also need the machine's current order and planned cycle: the hourly overview
     # derives production metrics from it for hours that belong to that same order.
+    # A finished shift no longer changes (apart from declarations still arriving shortly after it ended)
+    ttl = None
+    if not current:
+        ttl = FINISHED_TTL if now_utc - end.astimezone(timezone.utc) > GOOD_PAD else SETTLING_TTL
     (code, downtime, cycles, derived, current_status, scrap, cavity_data, *extra), stale = cache.get(
-        key, lambda: _fetch(machine.mes_id, start, observed_end, True))
+        key, lambda: _fetch(machine.mes_id, start, observed_end, True), ttl)
 
     events = []
     for row in downtime.get("segments", []) if downtime else []:
